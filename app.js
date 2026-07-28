@@ -1,48 +1,54 @@
 /**
  * Tesla Apps – Main Hub
- * Topics as large tiles; designed for in-car browser readability.
+ * Kacheln: Icon, Überschrift, Unterüberschrift, Statuszeile.
+ * Optimiert für Lesbarkeit im Tesla-Browser.
  */
 
 const TOPICS = [
   {
     id: "hello-world",
     title: "Hello World",
-    description: "Erste App – Willkommen & Schnelltest",
+    subtitle: "Erste App – Willkommen & Schnelltest",
     icon: "HW",
     href: "topics/hello-world.html",
     ready: false,
+    status: "Bald verfügbar",
   },
   {
     id: "fc-bayern",
     title: "FC Bayern München",
-    description: "News, Ergebnisse und Fakten zum FCB",
+    subtitle: "News, Ergebnisse und Fakten zum FCB",
     icon: "FCB",
     href: "topics/fc-bayern.html",
     ready: false,
+    status: "Bald verfügbar",
   },
   {
     id: "tesla",
     title: "Tesla",
-    description: "Fahrzeug, Updates und nützliche Infos",
+    subtitle: "Fahrzeug, Updates und nützliche Infos",
     icon: "T",
     href: "topics/tesla.html",
     ready: false,
+    status: "Bald verfügbar",
   },
   {
     id: "spacex",
     title: "SpaceX",
-    description: "Starts, Missionen und Spaceflight",
+    subtitle: "Starts, Missionen und Spaceflight",
     icon: "X",
     href: "topics/spacex.html",
     ready: false,
+    status: "Bald verfügbar",
   },
   {
     id: "x-money",
     title: "X Money",
-    description: "Zahlungen und Finanzen rund um X",
+    subtitle: "Zahlungen und Finanzen rund um X",
     icon: "$",
     href: "topics/x-money.html",
     ready: false,
+    status: "Bald verfügbar",
   },
 ];
 
@@ -52,25 +58,23 @@ function createTile(topic) {
   el.setAttribute("role", "listitem");
   el.dataset.topicId = topic.id;
 
+  const statusText = topic.status || (topic.ready ? "Bereit" : "Bald verfügbar");
+
   if (topic.ready) {
     el.href = topic.href;
   } else {
     el.type = "button";
     el.setAttribute("aria-disabled", "true");
-    el.title = `${topic.title} – bald verfügbar`;
+    el.title = `${topic.title} – ${statusText}`;
   }
 
   el.innerHTML = `
     <span class="tile__icon" aria-hidden="true">${escapeHtml(topic.icon)}</span>
     <span class="tile__body">
       <span class="tile__title">${escapeHtml(topic.title)}</span>
-      <span class="tile__desc">${escapeHtml(topic.description)}</span>
-      ${
-        topic.ready
-          ? `<span class="tile__cta">Öffnen <span class="tile__cta-arrow" aria-hidden="true">→</span></span>`
-          : `<span class="tile__badge">Bald verfügbar</span>`
-      }
+      <span class="tile__subtitle">${escapeHtml(topic.subtitle)}</span>
     </span>
+    <span class="tile__status">${escapeHtml(statusText)}</span>
   `;
 
   if (!topic.ready) {
@@ -98,8 +102,6 @@ function announce(message) {
     live.setAttribute("role", "status");
     live.setAttribute("aria-live", "polite");
     live.className = "visually-hidden";
-    live.style.cssText =
-      "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;";
     document.body.appendChild(live);
   }
   live.textContent = "";
