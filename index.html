@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f5f5f5" />
+    <meta name="theme-color" content="#f5f5f5" id="theme-color-meta" />
+    <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
       content="Tesla Apps Hub – Themen und Apps für den Browser im Auto"
@@ -12,8 +13,27 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Sichtbar nur bei prefers-color-scheme: dark (Tesla-Nachtmodus) -->
+    <div
+      class="night-indicator"
+      id="night-indicator"
+      role="status"
+      aria-live="polite"
+      aria-label="Nachtmodus aktiv"
+      hidden
+    >
+      <img
+        class="night-indicator__moon"
+        src="assets/moon.svg"
+        alt=""
+        width="28"
+        height="28"
+        decoding="async"
+      />
+    </div>
+
     <div class="app">
-      <h1 class="page-title">Apps Hub</h1>
+      <h1 class="page-title">Elon's World ;-)</h1>
       <main class="hub" id="hub">
         <div class="tile-grid" id="tile-grid" role="list"></div>
       </main>
