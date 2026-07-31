@@ -1,15 +1,24 @@
 /**
  * Tesla Apps – Main Hub
- * Kacheln: Icon, Überschrift, Unterüberschrift, Statuszeile.
+ * Kacheln: Piktogramm, Überschrift, Unterüberschrift, Statuszeile.
  * Optimiert für Lesbarkeit im Tesla-Browser.
  */
+
+/** SVG-Icons aus assets/ */
+const ICONS = {
+  helloWorld: "assets/code.svg",
+  football: "assets/fcb.svg",
+  car: "assets/tesla.svg",
+  rocket: "assets/rocket.svg",
+  money: "assets/money.svg",
+};
 
 const TOPICS = [
   {
     id: "hello-world",
     title: "Hello World",
     subtitle: "Erste App – Willkommen & Schnelltest",
-    icon: "HW",
+    icon: ICONS.helloWorld,
     href: "topics/hello-world.html",
     ready: false,
     status: "Bald verfügbar",
@@ -18,7 +27,7 @@ const TOPICS = [
     id: "fc-bayern",
     title: "FC Bayern München",
     subtitle: "News, Ergebnisse und Fakten zum FCB",
-    icon: "FCB",
+    icon: ICONS.football,
     href: "topics/fc-bayern.html",
     ready: false,
     status: "Bald verfügbar",
@@ -27,7 +36,7 @@ const TOPICS = [
     id: "tesla",
     title: "Tesla",
     subtitle: "Fahrzeug, Updates und nützliche Infos",
-    icon: "T",
+    icon: ICONS.car,
     href: "topics/tesla.html",
     ready: false,
     status: "Bald verfügbar",
@@ -36,7 +45,7 @@ const TOPICS = [
     id: "spacex",
     title: "SpaceX",
     subtitle: "Starts, Missionen und Spaceflight",
-    icon: "X",
+    icon: ICONS.rocket,
     href: "topics/spacex.html",
     ready: false,
     status: "Bald verfügbar",
@@ -45,39 +54,79 @@ const TOPICS = [
     id: "x-money",
     title: "X Money",
     subtitle: "Zahlungen und Finanzen rund um X",
-    icon: "$",
+    icon: ICONS.money,
     href: "topics/x-money.html",
     ready: false,
     status: "Bald verfügbar",
   },
+  {
+    id: "chibi",
+    /** Bild-Kachel: nur Vollformat-Bild, ohne Icon/Titel/Status */
+    image: "assets/chibi.jpg",
+    imageAlt: "Chibi",
+    ready: false,
+  },
 ];
 
 function createTile(topic) {
+  const isImageTile = Boolean(topic.image);
   const el = document.createElement(topic.ready ? "a" : "button");
-  el.className = "tile" + (topic.ready ? "" : " tile--soon");
+  el.className =
+    "tile" +
+    (!topic.ready && !isImageTile ? " tile--soon" : "") +
+    (isImageTile ? " tile--image" : "");
   el.setAttribute("role", "listitem");
   el.dataset.topicId = topic.id;
-
-  const statusText = topic.status || (topic.ready ? "Bereit" : "Bald verfügbar");
 
   if (topic.ready) {
     el.href = topic.href;
   } else {
     el.type = "button";
-    el.setAttribute("aria-disabled", "true");
-    el.title = `${topic.title} – ${statusText}`;
+    if (isImageTile) {
+      el.title = topic.imageAlt || "Bild";
+      el.setAttribute("aria-label", topic.imageAlt || "Bild");
+    } else {
+      el.setAttribute("aria-disabled", "true");
+      const statusText =
+        topic.status || (topic.ready ? "Bereit" : "Bald verfügbar");
+      el.title = `${topic.title} – ${statusText}`;
+    }
   }
 
-  el.innerHTML = `
-    <span class="tile__icon" aria-hidden="true">${escapeHtml(topic.icon)}</span>
-    <span class="tile__body">
-      <span class="tile__title">${escapeHtml(topic.title)}</span>
-      <span class="tile__subtitle">${escapeHtml(topic.subtitle)}</span>
-    </span>
-    <span class="tile__status">${escapeHtml(statusText)}</span>
-  `;
+  if (isImageTile) {
+    el.innerHTML = `
+      <img
+        class="tile__image"
+        src="${escapeHtml(topic.image)}"
+        alt="${escapeHtml(topic.imageAlt || "")}"
+        loading="lazy"
+        decoding="async"
+      />
+    `;
+  } else {
+    const statusText =
+      topic.status || (topic.ready ? "Bereit" : "Bald verfügbar");
+    const iconSrc = escapeHtml(topic.icon);
+    el.innerHTML = `
+      <span class="tile__icon" aria-hidden="true">
+        <img
+          class="tile__pictogram"
+          src="${iconSrc}"
+          alt=""
+          width="36"
+          height="36"
+          decoding="async"
+        />
+      </span>
+      <span class="tile__body">
+        <span class="tile__title">${escapeHtml(topic.title)}</span>
+        <span class="tile__subtitle">${escapeHtml(topic.subtitle)}</span>
+      </span>
+      <span class="tile__status">${escapeHtml(statusText)}</span>
+    `;
+  }
 
-  if (!topic.ready) {
+  if (!topic.ready && !isImageTile) {
     el.addEventListener("click", () => {
       announce(`${topic.title} ist noch nicht freigeschaltet.`);
     });
