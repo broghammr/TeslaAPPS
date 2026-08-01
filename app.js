@@ -17,11 +17,11 @@ const TOPICS = [
   {
     id: "hello-world",
     title: "Hello World",
-    subtitle: "Erste App – Willkommen & Schnelltest",
+    subtitle: "Unsere Roadtrips...",
     icon: ICONS.helloWorld,
     href: "topics/hello-world.html",
-    ready: false,
-    status: "Bald verfügbar",
+    ready: true,
+    status: "Öffnen",
   },
   {
     id: "fc-bayern",

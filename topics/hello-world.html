@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f5f5" id="theme-color-meta" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Hello World – Unsere Roadtrips"
+    />
+    <title>Hello World – Roadtrips</title>
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div
+      class="night-indicator"
+      id="night-indicator"
+      role="status"
+      aria-live="polite"
+      aria-label="Nachtmodus aktiv"
+      hidden
+    >
+      <img
+        class="night-indicator__moon"
+        src="../assets/moon.svg"
+        alt=""
+        width="28"
+        height="28"
+        decoding="async"
+      />
+    </div>
+
+    <div class="app">
+      <h1 class="page-title">
+        <a class="page-title--link" href="../index.html">Hello World - Unsere Roadtrips</a>
+      </h1>
+      <main class="hub" id="hub">
+        <div class="tile-grid" id="tile-grid" role="list"></div>
+      </main>
+    </div>
+
+    <script src="hello-world.js"></script>
+  </body>
+</html>
