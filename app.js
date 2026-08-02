@@ -53,11 +53,11 @@ const TOPICS = [
   {
     id: "x-money",
     title: "X Money",
-    subtitle: "Zahlungen und Finanzen rund um X",
+    subtitle: "Smarthome-Test · Lampe Bilder",
     icon: ICONS.money,
     href: "topics/x-money.html",
-    ready: false,
-    status: "Bald verfügbar",
+    ready: true,
+    status: "Öffnen",
   },
   {
     id: "chibi",
