@@ -30,10 +30,17 @@ Themenseite "Hello World" (hw)
 
 Themenseite "X Money" (xm)
 * Inhalt: Testseite um eine Lampe in meinem Smarthome ein-/ und auszuschalten
-* Gleiches Kachelleyout wie "Main Hub"
+* Gleiches Kachellayout wie "Main Hub"
 * Eine einzige Kachel welche eine Lampe mit dem Namen "Bilder" ein- bzw. ausschaltet
-* API einschalten: curl -X POST http://esp32-27DAE4.speedport.ip/gpio/set --data "pin=22&state=1"
-* API ausschalten: curl -X POST http://esp32-27DAE4.speedport.ip/gpio/set --data "pin=22&state=0"
+* API lokal: curl -X POST http://esp32-27DAE4.speedport.ip/gpio/set --data "pin=22&state=1" (an) bzw. state=0 (aus)
+* GitHub Pages ist HTTPS → direkter HTTP-Aufruf zum ESP = Mixed Content (blockiert)
+* Lösung: Cloudflare Tunnel (HTTPS öffentlich → HTTP ESP im LAN)
+  * Quick-Tunnel (Test): `powershell -ExecutionPolicy Bypass -File .\scripts\start-esp-tunnel.ps1`
+  * Angezeigte Basis-URL in `topics/x-money.js` als `CLOUDFLARE_TUNNEL_BASE` setzen
+  * API dann: POST {CLOUDFLARE_TUNNEL_BASE}/gpio/set mit pin=22&state=0|1
+  * PC mit laufendem `cloudflared` muss im Heimnetz sein; Tunnel-Prozess muss laufen
+  * Quick-Tunnel-URL ändert sich bei jedem Start; Tunnel exponiert ESP ohne Auth (nur Test)
+  * Dauerhaft: Named Tunnel + Domain in Cloudflare (feste HTTPS-URL, optional Access)
 
 
 Deployment:

@@ -2,21 +2,35 @@
  * Tesla Apps – Thema "X Money"
  * Smarthome-Test: Lampe "Bilder" am ESP32 ein-/ausschalten.
  *
- * API:
+ * Lokal (nur ohne Mixed Content, z.B. Seite auch per HTTP):
  *   POST http://esp32-27DAE4.speedport.ip/gpio/set
- *   pin=22&state=1  → an
- *   pin=22&state=0  → aus
+ *   pin=22&state=1|0
  *
- * Hinweis: Der ESP32 antwortet ohne CORS-Header. Wir senden daher mit
- * mode: "no-cors" (fire-and-forget). Der POST kommt an, die Antwort ist
- * opaque – UI-Zustand wird lokal nach erfolgreichem Absenden gesetzt.
- * Test im gleichen WLAN; HTTPS→HTTP kann je nach Browser blockiert sein.
+ * Von GitHub Pages (HTTPS) über Cloudflare Tunnel (HTTPS → HTTP im LAN):
+ *   1) Skript: scripts/start-esp-tunnel.ps1  (PC muss im Heimnetz laufen)
+ *   2) Angezeigte https://….trycloudflare.com-URL hier als apiBase setzen
+ *   3) Endpunkt: {apiBase}/gpio/set
+ *
+ * Quick-Tunnel-URLs ändern sich bei jedem Start. Dauerhaft: Named Tunnel
+ * (Cloudflare-Account + Domain) – siehe AGENTS.md.
+ *
+ * Sicherheit: Der Tunnel macht den ESP im Internet erreichbar (ohne Auth).
+ * Nur zum Testen; später Cloudflare Access / Token absichern.
+ *
+ * ESP ohne CORS → mode "no-cors" (fire-and-forget), UI-Zustand lokal.
  */
+
+/** Basis-URL des Tunnels (ohne trailing slash), leer = lokaler ESP */
+const CLOUDFLARE_TUNNEL_BASE =
+  "https://greater-prizes-fruits-imports.trycloudflare.com";
 
 const LAMP = {
   name: "Bilder",
   pin: 22,
-  apiUrl: "http://esp32-27DAE4.speedport.ip/gpio/set",
+  /** HTTPS-Tunnel (Pages) oder lokales HTTP im Heimnetz */
+  apiUrl: CLOUDFLARE_TUNNEL_BASE
+    ? `${CLOUDFLARE_TUNNEL_BASE}/gpio/set`
+    : "http://esp32-27DAE4.speedport.ip/gpio/set",
   icon: "../assets/money.svg",
 };
 
