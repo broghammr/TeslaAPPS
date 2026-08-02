@@ -31,6 +31,11 @@ const ROADTRIP_FILES = [
   "hw_202504_Nationales+Automuseum_Ewersbach.jpg",
   "hw_202503_HCOB_Hamburg.jpg",
   "hw_202408_Ravensburg_Tettnang.jpg",
+  "hw_202407_Peter+Maffay_Berlin.jpg",
+  "hw_202405_Tesla+Takeover_Salzburg.jpg",
+  "hw_202404_b'mine_Düsseldorf.jpg",
+  "hw_202403_JP+Performance_Dortmund.jpg",
+  "hw_202401_Wintertour_Leipzig.jpg",
 ];
 
 const CHIBI_IMAGE = "../assets/chibi.jpg";

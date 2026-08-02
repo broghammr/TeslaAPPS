@@ -2,8 +2,6 @@ Ziel:
 
 * Eigene Website die über den Browser im Tesla Model 3 Highland aufgerufen werden kann
 
-
-
 Anforderungen:
 
 UI Design:
@@ -14,13 +12,12 @@ UI Design:
 * Die Icons der Kacheln sind Piktogramme
 * Die sechste und letzte Kachel zeigt vollflächig assets/chibi.jps
 
-
 Inhalt:
 
 * Main Hub (index.html): Übersicht der Themen im "Kachel-Design"
 * Themen: Hello World, FC Bayern München, Tesla, SpaceX, X Money
 
-Themenseite "Hello World"
+Themenseite "Hello World" (hw)
 * Inhalt: Unsere Roadtrips werden angezeigt
 * Gleiches Kachellayout wir "Main Hub"
 * Pro Roadtrip eine Kachel mit je einem vollflächigen Bild
