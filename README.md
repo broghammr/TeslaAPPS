@@ -1,2 +1,2 @@
 # TeslaAPPS
-Tesla Browser Apps Hub – Main Hub mit Themen-Kacheln
+Tesla Browser - Main Hub
