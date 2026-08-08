@@ -22,6 +22,7 @@ const MONTHS_DE = [
 
 /** Roadtrip-Bilder unter assets/ (Präfix hw_) */
 const ROADTRIP_FILES = [
+  "hw_202608_Prater_Wien.jpg",
   "hw_202606_Tesla+Takeover_Salzburg.jpg",
   "hw_202605_FSD_Amsterdam.jpg",
   "hw_202603_Toto+Cup_Regensburg.jpg",

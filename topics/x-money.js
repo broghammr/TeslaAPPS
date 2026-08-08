@@ -1,36 +1,25 @@
 /**
  * Tesla Apps – Thema "X Money"
- * Smarthome-Test: Lampe "Bilder" am ESP32 ein-/ausschalten.
+ * Smarthome-Test: Lampe "Collage" am Raspberry Pi ein-/ausschalten.
  *
  * Lokal (nur ohne Mixed Content, z.B. Seite auch per HTTP):
- *   POST http://esp32-27DAE4.speedport.ip/gpio/set
- *   pin=22&state=1|0
+ *   POST http://localhost:8080/gpio/set
+ *   pin=17&state=1|0
  *
- * Von GitHub Pages (HTTPS) über Cloudflare Tunnel (HTTPS → HTTP im LAN):
- *   1) Skript: scripts/start-esp-tunnel.ps1  (PC muss im Heimnetz laufen)
- *   2) Angezeigte https://….trycloudflare.com-URL hier als apiBase setzen
- *   3) Endpunkt: {apiBase}/gpio/set
- *
- * Quick-Tunnel-URLs ändern sich bei jedem Start. Dauerhaft: Named Tunnel
- * (Cloudflare-Account + Domain) – siehe AGENTS.md.
- *
- * Sicherheit: Der Tunnel macht den ESP im Internet erreichbar (ohne Auth).
- * Nur zum Testen; später Cloudflare Access / Token absichern.
- *
- * ESP ohne CORS → mode "no-cors" (fire-and-forget), UI-Zustand lokal.
+ * Ohne CORS → mode "no-cors" (fire-and-forget), UI-Zustand lokal.
  */
 
-/** Basis-URL des Tunnels (ohne trailing slash), leer = lokaler ESP */
-const CLOUDFLARE_TUNNEL_BASE =
-  "https://greater-prizes-fruits-imports.trycloudflare.com";
+/** Basis-URL des Tunnels (ohne trailing slash), leer = lokaler Server */
+const NGROK_TUNNEL_BASE =
+  "https://placate-impale-nautical.ngrok-free.dev";
 
 const LAMP = {
-  name: "Bilder",
-  pin: 22,
+  name: "Collage",
+  pin: 17,
   /** HTTPS-Tunnel (Pages) oder lokales HTTP im Heimnetz */
-  apiUrl: CLOUDFLARE_TUNNEL_BASE
-    ? `${CLOUDFLARE_TUNNEL_BASE}/gpio/set`
-    : "http://esp32-27DAE4.speedport.ip/gpio/set",
+  apiUrl: NGROK_TUNNEL_BASE
+    ? `${NGROK_TUNNEL_BASE}/gpio/set`
+    : "http://localhost:8080/gpio/set",
   icon: "../assets/money.svg",
 };
 

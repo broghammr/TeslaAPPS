@@ -53,7 +53,7 @@ const TOPICS = [
   {
     id: "x-money",
     title: "X Money",
-    subtitle: "Smarthome-Test · Lampe Bilder",
+    subtitle: "Smarthome-Test · Lampe Collage",
     icon: ICONS.money,
     href: "topics/x-money.html",
     ready: true,
