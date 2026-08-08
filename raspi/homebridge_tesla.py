@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
 Tesla Model 3 Highland – HomeKit Bridge + Web-API
-Schalter:
-  - Rücksitzbank   → GPIO 17
-  - Sternenhimmel  → GPIO 22
+
+Geräte (AGENTS.md):
+  - Sternenhimmel  → GPIO 22  (On/Off-Lampe)
+  - Rücksitzbank   → GPIO 18  (WLED, An/Aus über GPIO)
+  - Beifahrer      → GPIO 21  (WLED, An/Aus über GPIO)
 
 Web-API:  POST /gpio/set   pin=XX&state=0|1
 """
@@ -25,19 +27,20 @@ Device.pin_factory = LGPIOFactory()
 
 logging.basicConfig(level=logging.INFO, format="[%(module)s] %(message)s")
 
-# Bekannte Pins für HomeKit
+# Bekannte Pins (AGENTS.md Projekt 02)
 PINS = {
-    "ruecksitzbank": 17,
     "sternenhimmel": 22,
+    "ruecksitzbank": 18,
+    "beifahrer": 21,
 }
 
 # Gemeinsamer Geräte-Cache + Mapping für Synchronisation
-gpio_devices = {}          # pin → OutputDevice
-pin_to_switch = {}         # pin → GpioSwitch-Instanz
+gpio_devices = {}  # pin → OutputDevice
+pin_to_switch = {}  # pin → GpioSwitch-Instanz
 
 
 def get_device(pin: int) -> OutputDevice:
-    """Holt oder erzeugt ein OutputDevice für den Pin"""
+    """Holt oder erzeugt ein OutputDevice für den Pin."""
     if pin not in gpio_devices:
         gpio_devices[pin] = OutputDevice(pin, active_high=True, initial_value=False)
         logging.info(f"GPIO {pin} initialisiert")
@@ -58,7 +61,7 @@ class GpioSwitch(Accessory):
         self.char_on = serv.configure_char(
             "On",
             value=False,
-            setter_callback=self.set_on
+            setter_callback=self.set_on,
         )
 
     def set_on(self, value: bool):
@@ -73,7 +76,6 @@ class GpioSwitch(Accessory):
 
 class GpioRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
-        # ruhiger – nur bei Bedarf aktivieren
         logging.debug("%s - %s" % (self.address_string(), format % args))
 
     def do_POST(self):
@@ -92,7 +94,6 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
             if pin is None or state not in (0, 1):
                 raise ValueError("pin und state (0 oder 1) erforderlich")
 
-            # GPIO schalten
             device = get_device(pin)
             if state == 1:
                 device.on()
@@ -119,7 +120,6 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(f"Error: {e}\n".encode())
 
     def do_GET(self):
-        # einfache Health-Check
         if self.path in ("/", "/health"):
             self.send_response(200)
             self.end_headers()
@@ -139,22 +139,23 @@ def get_bridge(driver):
     bridge = Bridge(driver, "Tesla Bridge")
 
     bridge.add_accessory(
+        GpioSwitch(driver, "Sternenhimmel", PINS["sternenhimmel"])
+    )
+    bridge.add_accessory(
         GpioSwitch(driver, "Rücksitzbank", PINS["ruecksitzbank"])
     )
     bridge.add_accessory(
-        GpioSwitch(driver, "Sternenhimmel", PINS["sternenhimmel"])
+        GpioSwitch(driver, "Beifahrer", PINS["beifahrer"])
     )
     return bridge
 
 
 def main():
-    # Web-API starten
     start_web_server(port=8080)
 
-    # HomeKit Bridge
     driver = AccessoryDriver(
         port=51826,
-        persist_file="/home/pi/scripts/homebridge_tesla.state",   # Pfad anpassen falls nötig
+        persist_file="/home/pi/scripts/homebridge_tesla.state",
     )
 
     bridge = get_bridge(driver)

@@ -10,7 +10,7 @@ const ICONS = {
   football: "assets/fcb.svg",
   car: "assets/tesla.svg",
   rocket: "assets/rocket.svg",
-  money: "assets/money.svg",
+  light: "assets/light.svg",
 };
 
 const TOPICS = [
@@ -51,11 +51,11 @@ const TOPICS = [
     status: "Bald verfügbar",
   },
   {
-    id: "x-money",
-    title: "X Money",
-    subtitle: "Smarthome-Test · Lampe Collage",
-    icon: ICONS.money,
-    href: "topics/x-money.html",
+    id: "light",
+    title: "Light",
+    subtitle: "Beleuchtung im Auto steuern",
+    icon: ICONS.light,
+    href: "topics/light.html",
     ready: true,
     status: "Öffnen",
   },

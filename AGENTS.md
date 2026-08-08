@@ -1,3 +1,6 @@
+Allgemeine Anweisungen:
+* Dateien in ./assets niemals löschen
+
 Projekt 01: Tesla Browser Hub:
 
 * Eigene Website die über den Browser im Tesla Model 3 Highland aufgerufen werden kann
@@ -14,7 +17,7 @@ UI Design:
 
 Inhalt:
 * Main Hub (index.html): Übersicht der Themen im "Kachel-Design"
-* Themen: Hello World (hw), FC Bayern München, Tesla, SpaceX, X Money (xm)
+* Themen: Hello World (hw), FC Bayern München, Tesla, SpaceX, Light (lt)
 
 Themenseite "Hello World" (hw)
 * Inhalt: Unsere Roadtrips werden angezeigt
@@ -26,10 +29,11 @@ Themenseite "Hello World" (hw)
 * Beispiel 01: Der Text der Fußzeile für die Datei hw_202605_FSD_Amsterdam.jpg soll dann so erscheinen: "Mai 2026 - FSD, Amsterdam"
 * Beispiel 02: Der Text der Fußzeile für die Datei hw_202603_Herr+Schröder_Saarbrücken.jpg soll dann so erscheinen: "März 2026 - Herr Schröder, Saarbrücken"
 
-Themenseite "X Money" (xm)
-* Inhalt: Testseite um eine Lampe in meinem Smarthome ein-/ und auszuschalten
+Themenseite "Light" (lt)
+* Inhalt: Steuerung der Beleuchtung im Auto
 * Gleiches Kachellayout wie "Main Hub"
-* Eine einzige Kachel welche eine Lampe mit dem Namen "Collage" ein- bzw. ausschaltet
+* Je eine Kachel für den Sternenhimmel, die Rücksitzbank und den Beifahrer, Details siehe Projekt 02 (Raspberry Pi)
+* Vierte Kachel "Farbe": Farbkreis zur Auswahl + Helligkeitsregler; gewählte Farbe (RGB + Helligkeit) wird später über die erweiterte Web-API gesendet
 * API lokal:  #Invoke-WebRequest -Uri "http://localhost:8080/gpio/set" -Method POST -Body "pin=17&state=0" -ContentType "application/x-www-form-urlencoded"
 * API public: #Invoke-WebRequest -Uri "https://placate-impale-nautical.ngrok-free.dev/gpio/set" -Method POST -Body "pin=17&state=0" -ContentType "application/x-www-form-urlencoded"
 
@@ -45,9 +49,9 @@ Projekt 02: Raspberry Pi:
 * Steuerung der Beleuchtung im Tesla Model 3 Highland mit einem Raspberry Pi
 
 Geräte
-* Lampe an GPIO 22: Sternenhimmel (On/Off Lampe)
-* WLED Streifen an GPIO 18: Rücksitzbank (Farblampe)
-* WLED Streifen an GPIO 21: Beifahrer (Farblampe)
+* Lampe an GPIO 17: Sternenhimmel (On/Off Lampe)
+* WLED Streifen an GPIO 21: Rücksitzbank (Farblampe)
+* WLED Streifen an GPIO 22: Beifahrer (Farblampe)
 
 Deployment
 * Skripte für den Raspberry Pi in Unterordner Raspi speichern
