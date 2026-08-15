@@ -1,0 +1,9 @@
+# Lokale ngrok-Config mit Authtoken nicht committen
+raspi/ngrok.yml
+/etc/ngrok/
+
+# Raspberry-Pi Laufzeit
+raspi/venv/
+raspi/*.state
+raspi/__pycache__/
+raspi/.lgd-nfy0

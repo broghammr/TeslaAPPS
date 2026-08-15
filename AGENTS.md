@@ -32,10 +32,8 @@ Themenseite "Hello World" (hw)
 Themenseite "Light" (lt)
 * Inhalt: Steuerung der Beleuchtung im Auto
 * Gleiches Kachellayout wie "Main Hub"
-* Je eine Kachel für den Sternenhimmel, die Rücksitzbank und den Beifahrer, Details siehe Projekt 02 (Raspberry Pi)
-* Vierte Kachel "Farbe": Farbkreis zur Auswahl + Helligkeitsregler; gewählte Farbe (RGB + Helligkeit) wird später über die erweiterte Web-API gesendet
-* API lokal:  #Invoke-WebRequest -Uri "http://localhost:8080/gpio/set" -Method POST -Body "pin=17&state=0" -ContentType "application/x-www-form-urlencoded"
-* API public: #Invoke-WebRequest -Uri "https://placate-impale-nautical.ngrok-free.dev/gpio/set" -Method POST -Body "pin=17&state=0" -ContentType "application/x-www-form-urlencoded"
+* Eine Kachel für den Sternenhimmel, On/Off Schalter; Ansteuerung siehe Projekt 02 Raspi
+* Für die Rücksitzbank und den Beifahrer je eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; in der Statuszeile gewählte Farbe als RGB-Werte ü gewählte Helligkeit in %; Ansteuerung siehe Projekt 02 Raspi 
 
 Deployment:
 * Deployment über GitHub Pages
@@ -44,14 +42,17 @@ Deployment:
 * Workflow: `.github/workflows/pages.yml` (Push auf `main`)
 * Einmalig nötig: Repo → Settings → Pages → Source = **GitHub Actions**
 
-Projekt 02: Raspberry Pi:
+Projekt 02: Raspberry Pi 4 Model B, 1GB RAM:
 
-* Steuerung der Beleuchtung im Tesla Model 3 Highland mit einem Raspberry Pi
+* Steuerung der Beleuchtung im Tesla Model 3 Highland mit einem Raspberry Pi 4
+
+Quellen:
+* Raspberry GPIOs: https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#gpio
 
 Geräte
-* Lampe an GPIO 17: Sternenhimmel (On/Off Lampe)
-* WLED Streifen an GPIO 21: Rücksitzbank (Farblampe)
-* WLED Streifen an GPIO 22: Beifahrer (Farblampe)
+* Relais an GPIO 17 (active_high=false): Sternenhimmel (On/Off Lampe)
+* WS2812 WLED Streifen mit 76 LEDs an GPIO 12 (PWM0): Rücksitzbank (Farblampe)
+* WS2812 WLED Streifen mit 16 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
 
 Deployment
 * Skripte für den Raspberry Pi in Unterordner Raspi speichern
@@ -65,11 +66,5 @@ Raspberry Pi "Jacky"
   - Implementierung einer HomeKit Bridge mit den Geräten "Sternenhimmel" als On/Off-Lampe, WLED Streifen "Rücksitzbank" als Farblampe und WLED Streifen "Beifahrer" als Farblampe
   - Implementierung eines Web API Endpoint ebenfalls zur Steuerung der Geräte
   - Den Status der Geräte synchron halten, wenn per Web API gesteuert wurde
-
-
-
-
-
-
 
 
