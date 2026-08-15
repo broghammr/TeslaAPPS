@@ -355,11 +355,34 @@ a {
   color: var(--text-secondary);
 }
 
-/* —— Light: Farbkreis + Helligkeit —— */
+/* —— Light: Farbkreis + Helligkeit (eine Kachel pro Streifen) —— */
 .tile--color {
   min-height: auto;
   cursor: default;
-  grid-column: 1 / -1;
+}
+
+.tile__power {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: 0;
+  text-align: left;
+  border-radius: var(--radius-sm);
+}
+
+.tile__power .tile__icon {
+  margin-bottom: 0;
+}
+
+.tile__power .tile__body {
+  flex: 1;
+}
+
+.tile__power:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .tile--color:hover,
@@ -406,7 +429,7 @@ a {
   box-shadow: 0 0 0 2px var(--border);
   flex-shrink: 0;
   /* große Touch-Fläche im Auto */
-  max-width: 240px;
+  max-width: 200px;
 }
 
 .color-picker__side {
@@ -490,6 +513,10 @@ a {
 .tile--color .tile__status {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.tile--color.tile--lamp-on .tile__status {
+  color: var(--accent);
 }
 
 /* Zurück zum Main Hub + Themenname (keine separate Kopfzeile) */
