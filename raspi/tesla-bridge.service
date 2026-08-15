@@ -1,0 +1,16 @@
+[Unit]
+Description=Tesla HomeKit Bridge + GPIO Web-API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/admin/scripts/jacky/TeslaAPPS/raspi
+ExecStart=/home/admin/scripts/jacky/TeslaAPPS/raspi/venv/bin/python3 /home/admin/scripts/jacky/TeslaAPPS/raspi/homebridge_tesla.py
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+# Vorlage für /etc/ngrok/ngrok.yml
+# Token nicht ins Repo schreiben. Installation:
+#   sudo NGROK_AUTHTOKEN='<token>' ./install-ngrok-service.sh
+version: 3
+
+agent:
+  authtoken: YOUR_NGROK_AUTHTOKEN
+  log_level: info
+  update_check: false
+  inspect_db_size: -1
+
+endpoints:
+  - name: tesla-gpio
+    url: https://placate-impale-nautical.ngrok-free.dev
+    upstream:
+      url: 8080
