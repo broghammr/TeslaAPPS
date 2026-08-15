@@ -1,57 +1,50 @@
 /**
  * Tesla Apps – Thema "Light"
- * Steuerung der Beleuchtung im Auto (Raspberry Pi / Web-API).
  *
- * Geräte (AGENTS.md Projekt 02):
- *   Sternenhimmel  GPIO 17  – On/Off-Lampe
- *   Rücksitzbank   GPIO 21  – WLED Farblampe (An/Aus über gpio/set)
- *   Beifahrer      GPIO 22  – WLED Farblampe (An/Aus über gpio/set)
- *   Farbe          – Farbkreis + Helligkeit (UI; Senden folgt mit erweiterter API)
+ *   Sternenhimmel  GPIO 17  – On/Off-Schalter
+ *   Rücksitzbank   GPIO 12  – WS2812 Farblampe (PWM0), eigene Farbkachel
+ *   Beifahrer      GPIO 13  – WS2812 Farblampe (PWM1), eigene Farbkachel
  *
- * API (An/Aus):
- *   POST {base}/gpio/set  pin=XX&state=0|1
- *   public: ngrok-Tunnel (HTTPS von GitHub Pages)
- *   lokal:  http://localhost:8080
- *
- * Farbe (vorbereitet, noch nicht gesendet):
- *   getColorPayload() → { r, g, b, brightness, h, s }
- *
- * mode "no-cors": Request wird gesendet, Response ist opaque.
+ * API:
+ *   POST {base}/gpio/set  pin=&state=0|1  [h,s,brightness,r,g,b]
+ *   GET  {base}/status
  */
 
-/** Basis-URL des Tunnels (ohne trailing slash), leer = lokaler Server */
-const NGROK_TUNNEL_BASE =
-  "https://placate-impale-nautical.ngrok-free.dev";
+const NGROK_TUNNEL_BASE = "https://placate-impale-nautical.ngrok-free.dev";
 
-const API_URL = NGROK_TUNNEL_BASE
-  ? `${NGROK_TUNNEL_BASE}/gpio/set`
-  : "http://localhost:8080/gpio/set";
+const API_BASE = NGROK_TUNNEL_BASE || "http://localhost:8080";
+const API_SET = `${API_BASE}/gpio/set`;
+const API_STATUS = `${API_BASE}/status`;
 
 const ICON = "../assets/light.svg";
+const WHEEL_SIZE = 200;
+const COLOR_DEBOUNCE_MS = 120;
 
-/** Geräte laut AGENTS.md – je eine Kachel */
 const DEVICES = [
   {
     id: "sternenhimmel",
     name: "Sternenhimmel",
     pin: 17,
-    kind: "On/Off-Lampe",
+    kind: "switch",
+    subtitle: "On/Off-Schalter",
   },
   {
     id: "ruecksitzbank",
     name: "Rücksitzbank",
-    pin: 21,
-    kind: "WLED Farblampe",
+    pin: 12,
+    kind: "color",
+    subtitle: "Farbe + Helligkeit",
   },
   {
     id: "beifahrer",
     name: "Beifahrer",
-    pin: 22,
-    kind: "WLED Farblampe",
+    pin: 13,
+    kind: "color",
+    subtitle: "Farbe + Helligkeit",
   },
 ];
 
-/** pin → { on, busy, tile } */
+/** pin → Gerätestatus inkl. DOM */
 const stateByPin = new Map();
 
 function escapeHtml(str) {
@@ -77,134 +70,6 @@ function announce(message) {
     live.textContent = message;
   });
 }
-
-function statusLabel(entry) {
-  if (entry.busy) return "Bitte warten…";
-  return entry.on
-    ? "An – tippen zum Ausschalten"
-    : "Aus – tippen zum Einschalten";
-}
-
-function subtitleLabel(device, entry) {
-  if (entry.busy) return "Befehl wird gesendet…";
-  return entry.on ? `${device.kind} · eingeschaltet` : `${device.kind} · ausgeschaltet`;
-}
-
-function updateTileUi(device, entry) {
-  const tile = entry.tile;
-  if (!tile) return;
-
-  tile.classList.toggle("tile--lamp-on", entry.on);
-  tile.classList.toggle("tile--busy", entry.busy);
-  tile.setAttribute("aria-pressed", entry.on ? "true" : "false");
-  tile.setAttribute(
-    "aria-label",
-    `${device.name}: ${entry.on ? "an" : "aus"}. Tippen zum Umschalten.`
-  );
-
-  const status = tile.querySelector(".tile__status");
-  if (status) status.textContent = statusLabel(entry);
-
-  const subtitle = tile.querySelector(".tile__subtitle");
-  if (subtitle) subtitle.textContent = subtitleLabel(device, entry);
-}
-
-/**
- * GPIO schalten. mode "no-cors": fire-and-forget bei fehlendem CORS.
- */
-async function setDeviceState(pin, on) {
-  const body = new URLSearchParams({
-    pin: String(pin),
-    state: on ? "1" : "0",
-  });
-
-  await fetch(API_URL, {
-    method: "POST",
-    mode: "no-cors",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-    },
-    body: body.toString(),
-  });
-}
-
-async function toggleDevice(device) {
-  const entry = stateByPin.get(device.pin);
-  if (!entry || entry.busy) return;
-
-  const next = !entry.on;
-  entry.busy = true;
-  updateTileUi(device, entry);
-
-  try {
-    await setDeviceState(device.pin, next);
-    entry.on = next;
-    announce(
-      entry.on ? `${device.name} ist an.` : `${device.name} ist aus.`
-    );
-  } catch (err) {
-    console.error("GPIO set failed:", err);
-    announce(
-      `${device.name}: Fehler. Raspberry Pi erreichbar? (Tunnel / Heimnetz)`
-    );
-  } finally {
-    entry.busy = false;
-    updateTileUi(device, entry);
-  }
-}
-
-function createDeviceTile(device) {
-  const entry = { on: false, busy: false, tile: null };
-  stateByPin.set(device.pin, entry);
-
-  const el = document.createElement("button");
-  el.type = "button";
-  el.className = "tile tile--lamp";
-  el.setAttribute("role", "listitem");
-  el.dataset.deviceId = device.id;
-  el.dataset.pin = String(device.pin);
-  el.setAttribute("aria-pressed", "false");
-
-  el.innerHTML = `
-    <span class="tile__icon" aria-hidden="true">
-      <img
-        class="tile__pictogram"
-        src="${escapeHtml(ICON)}"
-        alt=""
-        width="36"
-        height="36"
-        decoding="async"
-      />
-    </span>
-    <span class="tile__body">
-      <span class="tile__title">${escapeHtml(device.name)}</span>
-      <span class="tile__subtitle">${escapeHtml(device.kind)} · ausgeschaltet</span>
-    </span>
-    <span class="tile__status">Aus – tippen zum Einschalten</span>
-  `;
-
-  el.addEventListener("click", () => {
-    toggleDevice(device);
-  });
-
-  entry.tile = el;
-  updateTileUi(device, entry);
-  return el;
-}
-
-/* —— Farbe + Helligkeit (vierte Kachel, API später) —— */
-
-/** Aktuelle Auswahl: HSV + abgeleitete RGB (0–255), Helligkeit 0–100 % */
-const colorState = {
-  h: 210, // Blau-ish Start (passt zur Akzentfarbe)
-  s: 0.85,
-  v: 0.85,
-  r: 0,
-  g: 0,
-  b: 0,
-};
-
-const WHEEL_SIZE = 220; // px, gut tippbar im Tesla-Browser
 
 function hsvToRgb(h, s, v) {
   const c = v * s;
@@ -241,31 +106,258 @@ function hsvToRgb(h, s, v) {
   ];
 }
 
-function syncRgbFromHsv() {
-  const [r, g, b] = hsvToRgb(colorState.h, colorState.s, colorState.v);
-  colorState.r = r;
-  colorState.g = g;
-  colorState.b = b;
+function syncRgb(color) {
+  const [r, g, b] = hsvToRgb(color.h, color.s, color.v);
+  color.r = r;
+  color.g = g;
+  color.b = b;
 }
 
-/** Payload für spätere Web-API (WLED / Farbe) */
-function getColorPayload() {
+function colorPayload(color) {
   return {
-    r: colorState.r,
-    g: colorState.g,
-    b: colorState.b,
-    brightness: Math.round(colorState.v * 100),
-    h: Math.round(colorState.h),
-    s: Math.round(colorState.s * 100),
+    r: color.r,
+    g: color.g,
+    b: color.b,
+    brightness: Math.round(color.v * 100),
+    h: Math.round(color.h),
+    s: Math.round(color.s * 100),
   };
 }
 
-function colorStatusText() {
-  const p = getColorPayload();
-  return `RGB ${p.r}, ${p.g}, ${p.b} · ${p.brightness} %`;
+function createColorState() {
+  const color = { h: 210, s: 0.85, v: 0.85, r: 0, g: 0, b: 0 };
+  syncRgb(color);
+  return color;
 }
 
-function drawColorWheel(canvas) {
+async function postGpio(fields) {
+  const body = new URLSearchParams();
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value != null) body.set(key, String(value));
+  });
+
+  const init = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    },
+    body: body.toString(),
+  };
+
+  try {
+    const res = await fetch(API_SET, { ...init, mode: "cors" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } catch (err) {
+    if (err instanceof TypeError) {
+      await fetch(API_SET, { ...init, mode: "no-cors" });
+      return;
+    }
+    throw err;
+  }
+}
+
+async function fetchStatus() {
+  const res = await fetch(API_STATUS, { method: "GET", mode: "cors" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function applyStatus(data) {
+  if (!data || typeof data !== "object") return;
+
+  for (const device of DEVICES) {
+    const remote = data[String(device.pin)];
+    const entry = stateByPin.get(device.pin);
+    if (!remote || !entry) continue;
+
+    entry.on = Boolean(remote.on);
+    if (device.kind === "color" && entry.color) {
+      if (typeof remote.h === "number") entry.color.h = remote.h;
+      if (typeof remote.s === "number") entry.color.s = remote.s / 100;
+      if (typeof remote.brightness === "number") {
+        entry.color.v = remote.brightness / 100;
+      }
+      syncRgb(entry.color);
+      if (entry.refreshColor) entry.refreshColor();
+    }
+    updateTileUi(device, entry);
+  }
+}
+
+function switchStatusLabel(entry) {
+  if (entry.busy) return "Bitte warten…";
+  return entry.on
+    ? "An – tippen zum Ausschalten"
+    : "Aus – tippen zum Einschalten";
+}
+
+function colorStatusLabel(entry) {
+  const p = colorPayload(entry.color);
+  if (entry.busy) return "Befehl wird gesendet…";
+  const rgb = `RGB ${p.r}, ${p.g}, ${p.b} · ${p.brightness} %`;
+  return entry.on ? `An · ${rgb}` : `Aus · ${rgb}`;
+}
+
+function updateTileUi(device, entry) {
+  const tile = entry.tile;
+  if (!tile) return;
+
+  tile.classList.toggle("tile--lamp-on", entry.on);
+  tile.classList.toggle("tile--busy", entry.busy);
+
+  const power = tile.querySelector("[data-role=power]");
+  if (power) {
+    power.setAttribute("aria-pressed", entry.on ? "true" : "false");
+    power.setAttribute(
+      "aria-label",
+      `${device.name}: ${entry.on ? "an" : "aus"}. Tippen zum Umschalten.`
+    );
+  }
+
+  const subtitle = tile.querySelector(".tile__subtitle");
+  if (subtitle) {
+    subtitle.textContent = entry.busy
+      ? "Befehl wird gesendet…"
+      : entry.on
+        ? `${device.subtitle} · eingeschaltet`
+        : `${device.subtitle} · ausgeschaltet`;
+  }
+
+  const status = tile.querySelector(".tile__status");
+  if (status) {
+    status.textContent =
+      device.kind === "color"
+        ? colorStatusLabel(entry)
+        : switchStatusLabel(entry);
+  }
+}
+
+async function toggleDevice(device) {
+  const entry = stateByPin.get(device.pin);
+  if (!entry || entry.busy) return;
+
+  const next = !entry.on;
+  entry.busy = true;
+  updateTileUi(device, entry);
+
+  try {
+    if (device.kind === "color") {
+      const p = colorPayload(entry.color);
+      await postGpio({
+        pin: device.pin,
+        state: next ? "1" : "0",
+        h: p.h,
+        s: p.s,
+        brightness: p.brightness,
+        r: p.r,
+        g: p.g,
+        b: p.b,
+      });
+    } else {
+      await postGpio({ pin: device.pin, state: next ? "1" : "0" });
+    }
+    entry.on = next;
+    announce(next ? `${device.name} ist an.` : `${device.name} ist aus.`);
+  } catch (err) {
+    console.error("GPIO set failed:", err);
+    announce(
+      `${device.name}: Fehler. Raspberry Pi erreichbar? (Tunnel / Heimnetz)`
+    );
+  } finally {
+    entry.busy = false;
+    updateTileUi(device, entry);
+  }
+}
+
+async function sendColor(device, { turnOn = true } = {}) {
+  const entry = stateByPin.get(device.pin);
+  if (!entry) return;
+
+  entry.wantOn = turnOn ? true : entry.on;
+  if (entry.sendingColor) {
+    entry.colorQueued = true;
+    return;
+  }
+
+  entry.sendingColor = true;
+  try {
+    do {
+      entry.colorQueued = false;
+      const p = colorPayload(entry.color);
+      const nextOn = entry.wantOn !== false;
+      await postGpio({
+        pin: device.pin,
+        state: nextOn ? "1" : "0",
+        h: p.h,
+        s: p.s,
+        brightness: p.brightness,
+        r: p.r,
+        g: p.g,
+        b: p.b,
+      });
+      entry.on = nextOn;
+      announce(
+        `${device.name}: RGB ${p.r}, ${p.g}, ${p.b}, ${p.brightness} Prozent.`
+      );
+    } while (entry.colorQueued);
+  } catch (err) {
+    console.error("Color set failed:", err);
+    announce(`${device.name}: Farbe nicht gesendet.`);
+  } finally {
+    entry.sendingColor = false;
+    updateTileUi(device, entry);
+    if (entry.refreshColor) entry.refreshColor();
+  }
+}
+
+function deviceIconHtml() {
+  return `
+    <span class="tile__icon" aria-hidden="true">
+      <img
+        class="tile__pictogram"
+        src="${escapeHtml(ICON)}"
+        alt=""
+        width="36"
+        height="36"
+        decoding="async"
+      />
+    </span>
+  `;
+}
+
+function createSwitchTile(device) {
+  const entry = { on: false, busy: false, tile: null };
+  stateByPin.set(device.pin, entry);
+
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = "tile tile--lamp";
+  el.setAttribute("role", "listitem");
+  el.dataset.deviceId = device.id;
+  el.dataset.pin = String(device.pin);
+  el.dataset.kind = "switch";
+  el.dataset.role = "power";
+  el.setAttribute("aria-pressed", "false");
+
+  el.innerHTML = `
+    ${deviceIconHtml()}
+    <span class="tile__body">
+      <span class="tile__title">${escapeHtml(device.name)}</span>
+      <span class="tile__subtitle">${escapeHtml(device.subtitle)} · ausgeschaltet</span>
+    </span>
+    <span class="tile__status">Aus – tippen zum Einschalten</span>
+  `;
+
+  el.addEventListener("click", () => {
+    toggleDevice(device);
+  });
+
+  entry.tile = el;
+  updateTileUi(device, entry);
+  return el;
+}
+
+function drawColorWheel(canvas, color) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
@@ -288,7 +380,6 @@ function drawColorWheel(canvas) {
         continue;
       }
 
-      // Winkel → Hue, Abstand → Sättigung; V fest 1 (Helligkeit über Regler)
       let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
       if (angle < 0) angle += 360;
       const sat = Math.min(1, dist / radius);
@@ -303,9 +394,8 @@ function drawColorWheel(canvas) {
 
   ctx.putImageData(image, 0, 0);
 
-  // Auswahlmarker
-  const markerR = radius * colorState.s;
-  const rad = (colorState.h * Math.PI) / 180;
+  const markerR = radius * color.s;
+  const rad = (color.h * Math.PI) / 180;
   const mx = cx + markerR * Math.cos(rad);
   const my = cy + markerR * Math.sin(rad);
 
@@ -321,7 +411,7 @@ function drawColorWheel(canvas) {
   ctx.stroke();
 }
 
-function pickColorFromEvent(canvas, event) {
+function pickColorFromEvent(canvas, event, color) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
@@ -337,32 +427,49 @@ function pickColorFromEvent(canvas, event) {
   const dy = y - cy;
   const radius = canvas.width / 2 - 2;
   let dist = Math.sqrt(dx * dx + dy * dy);
-
   if (dist < 1) dist = 0;
-  // Außerhalb des Kreises: auf Rand clampen (leichter zu tippen)
+
   const sat = Math.min(1, dist / radius);
   let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
   if (angle < 0) angle += 360;
 
-  colorState.h = angle;
-  colorState.s = sat;
-  syncRgbFromHsv();
+  color.h = angle;
+  color.s = sat;
+  syncRgb(color);
   return true;
 }
 
-function createColorTile() {
-  syncRgbFromHsv();
+function createColorTile(device) {
+  const color = createColorState();
+  const entry = {
+    on: false,
+    busy: false,
+    tile: null,
+    color,
+    refreshColor: null,
+  };
+  stateByPin.set(device.pin, entry);
 
   const el = document.createElement("div");
-  el.className = "tile tile--color";
+  el.className = "tile tile--color tile--lamp";
   el.setAttribute("role", "listitem");
-  el.dataset.deviceId = "color-picker";
+  el.dataset.deviceId = device.id;
+  el.dataset.pin = String(device.pin);
+  el.dataset.kind = "color";
 
   el.innerHTML = `
-    <span class="tile__body tile__body--color">
-      <span class="tile__title">Farbe</span>
-      <span class="tile__subtitle">Farbkreis + Helligkeit · noch nicht gesendet</span>
-    </span>
+    <button
+      type="button"
+      class="tile__power"
+      data-role="power"
+      aria-pressed="false"
+    >
+      ${deviceIconHtml()}
+      <span class="tile__body tile__body--color">
+        <span class="tile__title">${escapeHtml(device.name)}</span>
+        <span class="tile__subtitle">${escapeHtml(device.subtitle)} · ausgeschaltet</span>
+      </span>
+    </button>
     <div class="color-picker">
       <div class="color-picker__row">
         <canvas
@@ -370,14 +477,10 @@ function createColorTile() {
           width="${WHEEL_SIZE}"
           height="${WHEEL_SIZE}"
           role="img"
-          aria-label="Farbkreis: Tippen zum Auswählen von Farbe und Sättigung"
+          aria-label="${escapeHtml(device.name)}: Farbkreis"
         ></canvas>
         <div class="color-picker__side">
-          <div
-            class="color-picker__swatch"
-            aria-hidden="true"
-            title="Aktuelle Farbe"
-          ></div>
+          <div class="color-picker__swatch" aria-hidden="true"></div>
           <label class="color-picker__brightness">
             <span class="color-picker__brightness-label">
               Helligkeit
@@ -390,53 +493,70 @@ function createColorTile() {
               max="100"
               step="1"
               value="85"
-              aria-label="Helligkeit"
+              aria-label="${escapeHtml(device.name)} Helligkeit"
             />
           </label>
         </div>
       </div>
     </div>
-    <span class="tile__status">${escapeHtml(colorStatusText())}</span>
+    <span class="tile__status">${escapeHtml(colorStatusLabel(entry))}</span>
   `;
 
   const canvas = el.querySelector(".color-picker__wheel");
   const swatch = el.querySelector(".color-picker__swatch");
   const slider = el.querySelector(".color-picker__slider");
   const brightValue = el.querySelector(".color-picker__brightness-value");
-  const status = el.querySelector(".tile__status");
+  const power = el.querySelector("[data-role=power]");
 
-  function refreshUi() {
-    drawColorWheel(canvas);
-    const css = `rgb(${colorState.r}, ${colorState.g}, ${colorState.b})`;
-    swatch.style.backgroundColor = css;
-    const pct = Math.round(colorState.v * 100);
+  function refreshColor() {
+    drawColorWheel(canvas, color);
+    swatch.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+    const pct = Math.round(color.v * 100);
     brightValue.textContent = `${pct} %`;
-    status.textContent = colorStatusText();
-    // Für spätere API-Anbindung sichtbar im DOM
-    el.dataset.colorR = String(colorState.r);
-    el.dataset.colorG = String(colorState.g);
-    el.dataset.colorB = String(colorState.b);
+    if (Number(slider.value) !== pct) slider.value = String(pct);
+    el.dataset.colorR = String(color.r);
+    el.dataset.colorG = String(color.g);
+    el.dataset.colorB = String(color.b);
     el.dataset.brightness = String(pct);
+    el.dataset.on = entry.on ? "1" : "0";
+    const status = el.querySelector(".tile__status");
+    if (status) status.textContent = colorStatusLabel(entry);
   }
+
+  entry.tile = el;
+  entry.refreshColor = refreshColor;
 
   let dragging = false;
+  let debounceTimer = 0;
 
-  function onPointerSelect(event) {
-    if (pickColorFromEvent(canvas, event)) {
-      refreshUi();
-    }
+  function queueColorSend() {
+    window.clearTimeout(debounceTimer);
+    debounceTimer = window.setTimeout(() => {
+      sendColor(device, { turnOn: true });
+    }, COLOR_DEBOUNCE_MS);
   }
+
+  power.addEventListener("click", (event) => {
+    event.preventDefault();
+    toggleDevice(device);
+  });
 
   canvas.addEventListener("pointerdown", (event) => {
     dragging = true;
     canvas.setPointerCapture?.(event.pointerId);
-    onPointerSelect(event);
+    if (pickColorFromEvent(canvas, event, color)) {
+      refreshColor();
+      queueColorSend();
+    }
     event.preventDefault();
   });
 
   canvas.addEventListener("pointermove", (event) => {
     if (!dragging) return;
-    onPointerSelect(event);
+    if (pickColorFromEvent(canvas, event, color)) {
+      refreshColor();
+      queueColorSend();
+    }
     event.preventDefault();
   });
 
@@ -448,29 +568,27 @@ function createColorTile() {
     } catch (_) {
       /* ignore */
     }
-    const p = getColorPayload();
-    announce(
-      `Farbe gewählt: RGB ${p.r}, ${p.g}, ${p.b}, Helligkeit ${p.brightness} Prozent.`
-    );
-    // TODO: sendColor(getColorPayload()) wenn Web-API erweitert ist
+    window.clearTimeout(debounceTimer);
+    sendColor(device, { turnOn: true });
   };
 
   canvas.addEventListener("pointerup", endDrag);
   canvas.addEventListener("pointercancel", endDrag);
 
   slider.addEventListener("input", () => {
-    colorState.v = Number(slider.value) / 100;
-    syncRgbFromHsv();
-    refreshUi();
+    color.v = Number(slider.value) / 100;
+    syncRgb(color);
+    refreshColor();
+    queueColorSend();
   });
 
   slider.addEventListener("change", () => {
-    const p = getColorPayload();
-    announce(`Helligkeit ${p.brightness} Prozent.`);
-    // TODO: sendColor(getColorPayload()) wenn Web-API erweitert ist
+    window.clearTimeout(debounceTimer);
+    sendColor(device, { turnOn: color.v > 0 });
   });
 
-  refreshUi();
+  refreshColor();
+  updateTileUi(device, entry);
   return el;
 }
 
@@ -480,10 +598,22 @@ function renderPage() {
 
   const fragment = document.createDocumentFragment();
   for (const device of DEVICES) {
-    fragment.appendChild(createDeviceTile(device));
+    fragment.appendChild(
+      device.kind === "color"
+        ? createColorTile(device)
+        : createSwitchTile(device)
+    );
   }
-  fragment.appendChild(createColorTile());
   grid.appendChild(fragment);
+}
+
+async function syncFromBridge() {
+  try {
+    const data = await fetchStatus();
+    applyStatus(data);
+  } catch (err) {
+    console.warn("Status nicht geladen:", err);
+  }
 }
 
 function setupNightModeIndicator() {
@@ -517,4 +647,5 @@ function setupNightModeIndicator() {
 document.addEventListener("DOMContentLoaded", () => {
   setupNightModeIndicator();
   renderPage();
+  syncFromBridge();
 });
