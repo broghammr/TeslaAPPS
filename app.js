@@ -7,11 +7,15 @@
 /** SVG-Icons aus assets/ */
 const ICONS = {
   helloWorld: "assets/code.svg",
-  football: "assets/fcb.svg",
   car: "assets/tesla.svg",
   rocket: "assets/rocket.svg",
   light: "assets/light.svg",
+  monitor: "assets/monitor.svg",
 };
+
+const NGROK_TUNNEL_BASE = "https://placate-impale-nautical.ngrok-free.dev";
+const API_TEMP = `${NGROK_TUNNEL_BASE}/temp`;
+const API_HEADERS = { "ngrok-skip-browser-warning": "1" };
 
 const TOPICS = [
   {
@@ -22,15 +26,6 @@ const TOPICS = [
     href: "topics/hello-world.html",
     ready: true,
     status: "Öffnen",
-  },
-  {
-    id: "fc-bayern",
-    title: "FC Bayern München",
-    subtitle: "News, Ergebnisse und Fakten zum FCB",
-    icon: ICONS.football,
-    href: "topics/fc-bayern.html",
-    ready: false,
-    status: "Bald verfügbar",
   },
   {
     id: "tesla",
@@ -60,6 +55,15 @@ const TOPICS = [
     status: "Öffnen",
   },
   {
+    id: "monitor",
+    title: "Monitor",
+    subtitle: "Temperatur des Raspberry Pi",
+    icon: ICONS.monitor,
+    kind: "monitor",
+    ready: true,
+    status: "Wird geladen…",
+  },
+  {
     id: "chibi",
     /** Bild-Kachel: nur Vollformat-Bild, ohne Icon/Titel/Status */
     image: "assets/chibi.jpg",
@@ -70,21 +74,26 @@ const TOPICS = [
 
 function createTile(topic) {
   const isImageTile = Boolean(topic.image);
-  const el = document.createElement(topic.ready ? "a" : "button");
+  const isMonitor = topic.kind === "monitor";
+  const isLink = Boolean(topic.ready && topic.href && !isMonitor);
+  const el = document.createElement(isLink ? "a" : "button");
   el.className =
     "tile" +
     (!topic.ready && !isImageTile ? " tile--soon" : "") +
-    (isImageTile ? " tile--image" : "");
+    (isImageTile ? " tile--image" : "") +
+    (isMonitor ? " tile--monitor" : "");
   el.setAttribute("role", "listitem");
   el.dataset.topicId = topic.id;
 
-  if (topic.ready) {
+  if (isLink) {
     el.href = topic.href;
   } else {
     el.type = "button";
     if (isImageTile) {
       el.title = topic.imageAlt || "Bild";
       el.setAttribute("aria-label", topic.imageAlt || "Bild");
+    } else if (isMonitor) {
+      el.setAttribute("aria-label", `${topic.title}: Temperatur wird geladen`);
     } else {
       el.setAttribute("aria-disabled", "true");
       const statusText =
@@ -126,13 +135,59 @@ function createTile(topic) {
     `;
   }
 
-  if (!topic.ready && !isImageTile) {
+  if (isMonitor) {
+    el.addEventListener("click", () => {
+      refreshMonitorTile(el, { announceResult: true });
+    });
+    refreshMonitorTile(el);
+  } else if (!topic.ready && !isImageTile) {
     el.addEventListener("click", () => {
       announce(`${topic.title} ist noch nicht freigeschaltet.`);
     });
   }
 
   return el;
+}
+
+function formatCelsius(value) {
+  return `${value.toLocaleString("de-DE", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} °C`;
+}
+
+async function fetchCpuTemp() {
+  const res = await fetch(API_TEMP, {
+    method: "GET",
+    mode: "cors",
+    headers: API_HEADERS,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (typeof data.celsius !== "number") throw new Error("invalid temp");
+  return data.celsius;
+}
+
+async function refreshMonitorTile(tile, { announceResult = false } = {}) {
+  const status = tile.querySelector(".tile__status");
+  if (status) status.textContent = "Wird geladen…";
+
+  try {
+    const celsius = await fetchCpuTemp();
+    const label = formatCelsius(celsius);
+    if (status) status.textContent = label;
+    tile.setAttribute("aria-label", `Monitor: ${label}`);
+    tile.classList.remove("tile--soon");
+    if (announceResult) announce(`Raspberry Pi: ${label}`);
+  } catch (err) {
+    console.warn("Temperatur nicht geladen:", err);
+    if (status) status.textContent = "Nicht erreichbar";
+    tile.setAttribute(
+      "aria-label",
+      "Monitor: Temperatur nicht erreichbar. Tippen zum erneuten Laden."
+    );
+    if (announceResult) announce("Temperatur nicht erreichbar.");
+  }
 }
 
 function escapeHtml(str) {
