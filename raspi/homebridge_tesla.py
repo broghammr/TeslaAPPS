@@ -13,6 +13,7 @@ Web-API:
   POST /gpio/set   pin=XX&state=0|1
                    optional: r,g,b (0–255) und/oder h,s,brightness
   GET  /status     JSON mit aktuellem Zustand
+  GET  /temp       CPU-Temperatur in °C
   GET  /health     OK
 """
 
@@ -71,9 +72,16 @@ PWM = {
 HAP_PORT = 51826
 WEB_PORT = 8080
 PAIRING_PIN = b"031-45-154"
+THERMAL_PATH = Path("/sys/class/thermal/thermal_zone0/temp")
 
 # pin → Accessory (für Web-API ↔ HomeKit)
 REGISTRY: dict[int, Accessory] = {}
+
+
+def read_cpu_temp_c() -> float:
+    """Liest die SoC-Temperatur in Grad Celsius."""
+    raw = THERMAL_PATH.read_text().strip()
+    return int(raw) / 1000.0
 
 
 def hsv_to_rgb(h: float, s: float, v: float) -> tuple[int, int, int]:
@@ -410,7 +418,10 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header(
+            "Access-Control-Allow-Headers",
+            "Content-Type, ngrok-skip-browser-warning",
+        )
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
@@ -425,6 +436,14 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/status":
             self._send(200, {str(pin): acc.as_status() for pin, acc in REGISTRY.items()})
+            return
+        if path == "/temp":
+            try:
+                celsius = read_cpu_temp_c()
+                self._send(200, {"celsius": round(celsius, 1), "unit": "C"})
+            except Exception as exc:
+                log.warning("Temperatur nicht lesbar: %s", exc)
+                self._send(503, {"error": "temperature unavailable"})
             return
         self.send_error(404)
 
