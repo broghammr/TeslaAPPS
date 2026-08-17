@@ -355,6 +355,11 @@ a {
   color: var(--text-secondary);
 }
 
+.tile--monitor .tile__status {
+  font-size: clamp(1.25rem, 2.4vw, 1.55rem);
+  font-variant-numeric: tabular-nums;
+}
+
 /* —— Light: Farbkreis + Helligkeit (eine Kachel pro Streifen) —— */
 .tile--color {
   min-height: auto;
