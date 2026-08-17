@@ -15,6 +15,7 @@ const NGROK_TUNNEL_BASE = "https://placate-impale-nautical.ngrok-free.dev";
 const API_BASE = NGROK_TUNNEL_BASE || "http://localhost:8080";
 const API_SET = `${API_BASE}/gpio/set`;
 const API_STATUS = `${API_BASE}/status`;
+const API_HEADERS = { "ngrok-skip-browser-warning": "1" };
 
 const ICON = "../assets/light.svg";
 const WHEEL_SIZE = 200;
@@ -140,6 +141,7 @@ async function postGpio(fields) {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      ...API_HEADERS,
     },
     body: body.toString(),
   };
@@ -157,7 +159,11 @@ async function postGpio(fields) {
 }
 
 async function fetchStatus() {
-  const res = await fetch(API_STATUS, { method: "GET", mode: "cors" });
+  const res = await fetch(API_STATUS, {
+    method: "GET",
+    mode: "cors",
+    headers: API_HEADERS,
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
