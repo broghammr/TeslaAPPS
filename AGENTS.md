@@ -1,5 +1,6 @@
 Allgemeine Anweisungen:
 * Dateien in ./assets niemals löschen
+* Commit oder Push nur auf explizite Anfrage durchführen
 
 Projekt 01: Tesla Browser Hub:
 
@@ -13,11 +14,12 @@ UI Design:
 * Keine Titelleiste/ Kopfzeile oder ähnliches, nur Überschrift und dann die Kacheln für die Themen
 * Kacheln haben ein Icon, eine Überschrift und eine Unterüberschrift, sowie eine Statuszeile
 * Die Icons der Kacheln sind Piktogramme
+* Die fünfte Kachel ist die Themenkachel "Monitor" (mn)
 * Die sechste und letzte Kachel zeigt vollflächig assets/chibi.jps
 
 Inhalt:
 * Main Hub (index.html): Übersicht der Themen im "Kachel-Design"
-* Themen: Hello World (hw), FC Bayern München, Tesla, SpaceX, Light (lt)
+* Themen: Hello World (hw), Tesla, SpaceX, Light (lt)
 
 Themenseite "Hello World" (hw)
 * Inhalt: Unsere Roadtrips werden angezeigt
@@ -35,6 +37,11 @@ Themenseite "Light" (lt)
 * Eine Kachel für den Sternenhimmel, On/Off Schalter; Ansteuerung siehe Projekt 02 Raspi
 * Für die Rücksitzbank und den Beifahrer je eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; in der Statuszeile gewählte Farbe als RGB-Werte ü gewählte Helligkeit in %; Ansteuerung siehe Projekt 02 Raspi 
 
+Themenkachel "Monitor" (mn)
+* Nur eine Kachel mit Inhalt, aber ohne Unterseite
+* Inhalt: Temparatur des Raspi
+* Temparatur wir beim Laden der Seite aktualisiert, kein automatischer Refresh
+
 Deployment:
 * Deployment über GitHub Pages
 * Repo: https://github.com/broghammr/TeslaAPPS (öffentlich)
@@ -50,9 +57,10 @@ Quellen:
 * Raspberry GPIOs: https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#gpio
 
 Geräte
-* Relais an GPIO 17 (active_high=false): Sternenhimmel (On/Off Lampe)
+* Relais an GPIO 17 (active_high=False): Sternenhimmel (On/Off Lampe)
 * WS2812 WLED Streifen mit 76 LEDs an GPIO 12 (PWM0): Rücksitzbank (Farblampe)
 * WS2812 WLED Streifen mit 16 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
+* Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
 
 Deployment
 * Skripte für den Raspberry Pi in Unterordner Raspi speichern
