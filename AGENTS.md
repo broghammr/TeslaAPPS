@@ -15,15 +15,14 @@ UI Design:
 * Kacheln haben ein Icon, eine Überschrift und eine Unterüberschrift, sowie eine Statuszeile
 * Die Icons der Kacheln sind Piktogramme
 * Die fünfte Kachel ist die Themenkachel "Monitor" (mn)
-* Die sechste und letzte Kachel zeigt vollflächig assets/chibi.jps
 
 Inhalt:
 * Main Hub (index.html): Übersicht der Themen im "Kachel-Design"
-* Themen: Hello World (hw), Tesla, SpaceX, Light (lt)
+* Themen: Hello World (hw), Tesla, SpaceX, Light (lt), Monitor (mn)
 
 Themenseite "Hello World" (hw)
 * Inhalt: Unsere Roadtrips werden angezeigt
-* Gleiches Kachellayout wie "Main Hub"
+* Kachellayout zeigt vollflächig assets/chibi.jpg
 * Pro Roadtrip eine Kachel mit je einem vollflächigen Bild
 * Ort und Zeitraum des Roadtrips in der Fußzeile
 * Die Fußzeile wird halbtransparent über das vollflächigen Bild innerhalb der Kachel gelegt
@@ -35,12 +34,12 @@ Themenseite "Light" (lt)
 * Inhalt: Steuerung der Beleuchtung im Auto
 * Gleiches Kachellayout wie "Main Hub"
 * Eine Kachel für den Sternenhimmel, On/Off Schalter; Ansteuerung siehe Projekt 02 Raspi
-* Für die Rücksitzbank und den Beifahrer je eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; in der Statuszeile gewählte Farbe als RGB-Werte ü gewählte Helligkeit in %; Ansteuerung siehe Projekt 02 Raspi 
+* Für die Rücksitzbank und den Beifahrer je eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; in der Statuszeile gewählte Farbe als RGB-Werte + gewählte Helligkeit in %; Ansteuerung siehe Projekt 02 Raspi 
 
 Themenkachel "Monitor" (mn)
 * Nur eine Kachel mit Inhalt, aber ohne Unterseite
 * Inhalt: Temparatur des Raspi
-* Temparatur wir beim Laden der Seite aktualisiert, kein automatischer Refresh
+* Temparatur wir beim Laden der Seite aktualisiert und bei einem Touch auf die Kachel, kein automatischer Refresh
 
 Deployment:
 * Deployment über GitHub Pages
@@ -57,7 +56,7 @@ Quellen:
 * Raspberry GPIOs: https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#gpio
 
 Geräte
-* Relais an GPIO 17 (active_high=False): Sternenhimmel (On/Off Lampe)
+* Relais an GPIO 17 (active_high=False): grüner Sternenhimmel (On/Off Lampe)
 * WS2812 WLED Streifen mit 76 LEDs an GPIO 12 (PWM0): Rücksitzbank (Farblampe)
 * WS2812 WLED Streifen mit 16 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
 * Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
@@ -74,5 +73,7 @@ Raspberry Pi "Jacky"
   - Implementierung einer HomeKit Bridge mit den Geräten "Sternenhimmel" als On/Off-Lampe, WLED Streifen "Rücksitzbank" als Farblampe und WLED Streifen "Beifahrer" als Farblampe
   - Implementierung eines Web API Endpoint ebenfalls zur Steuerung der Geräte
   - Den Status der Geräte synchron halten, wenn per Web API gesteuert wurde
+* Dynamische Lichtszenen
+  - Startanimationen, welche die Tesla Startanimation aus dem Sommerupdate 2026 unterstützt, Dauer 30s. Nur die WLED Streifen dazu verwenden, nicht den Sternenhimmel. Ausführung beim Start des Python Skripts (Daemon) und wenn der Taster an GPIO 27 gedrückt wurde.
 
 

@@ -12,9 +12,13 @@ HomeKit: Bridge „Tesla Bridge“ mit Switch + zwei Color-Lightbulbs.
 Web-API:
   POST /gpio/set   pin=XX&state=0|1
                    optional: r,g,b (0–255) und/oder h,s,brightness
+  POST /scene/start  Welcome-Szene (30 s) wie Taster
   GET  /status     JSON mit aktuellem Zustand
   GET  /temp       CPU-Temperatur in °C
   GET  /health     OK
+
+Szenen:
+  Welcome 30s (Tesla Sommerupdate 2026) beim Daemon-Start und Taster GPIO 27.
 """
 
 from __future__ import annotations
@@ -30,11 +34,13 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from gpiozero import Device, OutputDevice
+from gpiozero import Button, Device, OutputDevice
 from gpiozero.pins.lgpio import LGPIOFactory
 from pyhap.accessory import Accessory, Bridge
 from pyhap.accessory_driver import AccessoryDriver
 from pyhap.const import CATEGORY_LIGHTBULB, CATEGORY_SWITCH
+
+from light_scenes import TESLA_ICE, ScenePlayer
 
 try:
     import _rpi_ws281x as ws
@@ -56,6 +62,7 @@ PINS = {
     "sternenhimmel": 17,
     "ruecksitzbank": 12,
     "beifahrer": 13,
+    "taster": 27,
 }
 
 # LED-Anzahl pro Streifen (oder Env WS2812_COUNT_*)
@@ -76,6 +83,7 @@ THERMAL_PATH = Path("/sys/class/thermal/thermal_zone0/temp")
 
 # pin → Accessory (für Web-API ↔ HomeKit)
 REGISTRY: dict[int, Accessory] = {}
+SCENE_PLAYER: ScenePlayer | None = None
 
 
 def read_cpu_temp_c() -> float:
@@ -152,14 +160,23 @@ class DualPwmStrips:
         )
 
     def fill(self, channel: int, r: int, g: int, b: int) -> None:
-        if self._closed or self._leds is None:
-            return
-        color = Color(int(r), int(g), int(b))
-        chan = self._channels[channel]
         n = self.counts[channel]
+        self.write_pixels({channel: [(int(r), int(g), int(b))] * n})
+
+    def write_pixels(self, frames: dict[int, list[tuple[int, int, int]]]) -> None:
+        if self._closed or self._leds is None or Color is None:
+            return
         with self._lock:
-            for i in range(n):
-                ws.ws2811_led_set(chan, i, color)
+            for channum, pixels in frames.items():
+                chan = self._channels[channum]
+                n = self.counts[channum]
+                for i in range(n):
+                    if i < len(pixels):
+                        r, g, b = pixels[i]
+                        color = Color(int(r) & 255, int(g) & 255, int(b) & 255)
+                    else:
+                        color = Color(0, 0, 0)
+                    ws.ws2811_led_set(chan, i, color)
             resp = ws.ws2811_render(self._leds)
             if resp != 0:
                 raise RuntimeError(
@@ -190,8 +207,53 @@ class NullStrips:
     def fill(self, channel: int, r: int, g: int, b: int) -> None:
         log.warning("WS2812 nicht bereit (ch%s → %s,%s,%s)", channel, r, g, b)
 
+    def write_pixels(self, frames: dict[int, list[tuple[int, int, int]]]) -> None:
+        return
+
     def close(self) -> None:
         return
+
+
+def scene_owns_hardware() -> bool:
+    return SCENE_PLAYER is not None and SCENE_PLAYER.is_running
+
+
+def theme_from_lamps() -> tuple[int, int, int]:
+    for pin in (PINS["ruecksitzbank"], PINS["beifahrer"]):
+        acc = REGISTRY.get(pin)
+        if not isinstance(acc, ColorLamp):
+            continue
+        if acc._sat >= 8:
+            return hsv_to_rgb(acc._hue, max(acc._sat, 35), 100)
+    return TESLA_ICE
+
+
+def snapshot_scene_state() -> dict:
+    rear = REGISTRY.get(PINS["ruecksitzbank"])
+    passenger = REGISTRY.get(PINS["beifahrer"])
+    return {
+        "rear": rear._rgb() if isinstance(rear, ColorLamp) else (0, 0, 0),
+        "pass": passenger._rgb() if isinstance(passenger, ColorLamp) else (0, 0, 0),
+        "theme": theme_from_lamps(),
+    }
+
+
+def write_scene_pixels(
+    rear: list[tuple[int, int, int]],
+    passenger: list[tuple[int, int, int]],
+) -> None:
+    strips = None
+    acc = REGISTRY.get(PINS["ruecksitzbank"])
+    if isinstance(acc, ColorLamp):
+        strips = acc.strips
+    if strips is None:
+        return
+    strips.write_pixels(
+        {
+            PWM["ruecksitzbank"]["channel"]: rear,
+            PWM["beifahrer"]["channel"]: passenger,
+        }
+    )
 
 
 def init_strips():
@@ -306,6 +368,8 @@ class ColorLamp(Accessory):
         return hsv_to_rgb(self._hue, self._sat, self._bri)
 
     def _apply(self) -> None:
+        if scene_owns_hardware():
+            return
         r, g, b = self._rgb()
         self.strips.fill(self.channel, r, g, b)
         log.info(
@@ -435,7 +499,13 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
             self._send(200, "Tesla GPIO Bridge OK\n")
             return
         if path == "/status":
-            self._send(200, {str(pin): acc.as_status() for pin, acc in REGISTRY.items()})
+            payload = {str(pin): acc.as_status() for pin, acc in REGISTRY.items()}
+            payload["scene"] = (
+                SCENE_PLAYER.as_status()
+                if SCENE_PLAYER is not None
+                else {"name": None, "running": False, "duration": 30.0}
+            )
+            self._send(200, payload)
             return
         if path == "/temp":
             try:
@@ -449,6 +519,13 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path == "/scene/start":
+            if SCENE_PLAYER is None:
+                self._send(503, "Error: Szene nicht bereit\n")
+                return
+            SCENE_PLAYER.request_start("api")
+            self._send(200, {"ok": True, "scene": "welcome", "duration": 30.0})
+            return
         if path != "/gpio/set":
             self.send_error(404, "Not Found")
             return
@@ -504,8 +581,27 @@ def start_web_server(port: int = WEB_PORT) -> HTTPServer:
     server = HTTPServer(("0.0.0.0", port), GpioRequestHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True, name="web-api")
     thread.start()
-    log.info("Web-API auf Port %s  →  POST /gpio/set  GET /status", port)
+    log.info(
+        "Web-API auf Port %s  →  POST /gpio/set  POST /scene/start  GET /status",
+        port,
+    )
     return server
+
+
+def attach_scene_button(player: ScenePlayer) -> Button:
+    button = Button(PINS["taster"], pull_up=True, bounce_time=0.15)
+    button.when_pressed = lambda: player.request_start("taster")
+    log.info("Taster GPIO %s → Startanimation (kein HomeKit-Gerät)", PINS["taster"])
+    return button
+
+
+def build_scene_player() -> ScenePlayer:
+    return ScenePlayer(
+        rear_count=LED_COUNT["ruecksitzbank"],
+        pass_count=LED_COUNT["beifahrer"],
+        write_pixels=write_scene_pixels,
+        snapshot=snapshot_scene_state,
+    )
 
 
 def get_bridge(driver, strips) -> Bridge:
@@ -541,6 +637,8 @@ def get_bridge(driver, strips) -> Bridge:
 
 
 def main() -> None:
+    global SCENE_PLAYER
+
     strips = init_strips()
     start_web_server(WEB_PORT)
 
@@ -552,11 +650,25 @@ def main() -> None:
     bridge = get_bridge(driver, strips)
     driver.add_accessory(accessory=bridge)
 
+    SCENE_PLAYER = build_scene_player()
+    button = None
+    try:
+        button = attach_scene_button(SCENE_PLAYER)
+    except Exception as exc:
+        log.error("Taster GPIO %s nicht verfügbar: %s", PINS["taster"], exc)
+    SCENE_PLAYER.request_start("daemon")
+
     log.info("HomeKit Pairing-Code: %s", PAIRING_PIN.decode())
     signal.signal(signal.SIGTERM, driver.signal_handler)
     try:
         driver.start()
     finally:
+        SCENE_PLAYER.stop()
+        if button is not None:
+            try:
+                button.close()
+            except Exception:
+                pass
         strips.close()
 
 
