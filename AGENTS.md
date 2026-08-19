@@ -74,6 +74,6 @@ Raspberry Pi "Jacky"
   - Implementierung eines Web API Endpoint ebenfalls zur Steuerung der Geräte
   - Den Status der Geräte synchron halten, wenn per Web API gesteuert wurde
 * Dynamische Lichtszenen
-  - Startanimationen, welche die Tesla Startanimation aus dem Sommerupdate 2026 unterstützt, Dauer 30s. Nur die WLED Streifen dazu verwenden, nicht den Sternenhimmel. Ausführung beim Start des Python Skripts (Daemon) und wenn der Taster an GPIO 27 gedrückt wurde.
+  - Startanimationen, welche die Tesla Startanimation aus dem Sommerupdate 2026 unterstützt, Dauer 30s. Nur die WLED Streifen dazu verwenden, nicht den Sternenhimmel. Ausführung beim Start des Python Skripts (Daemon) und wenn der Taster an GPIO 27 gedrückt wurde — auch ohne Netz. HomeKit startet erst, sobald eine LAN-IP da ist.
 
 

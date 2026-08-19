@@ -1,7 +1,8 @@
 [Unit]
 Description=Tesla HomeKit Bridge + GPIO Web-API
-After=network-online.target
-Wants=network-online.target
+# Früh starten: Startanimation braucht GPIO/PWM, kein Netz.
+# HomeKit wartet im Prozess auf eine LAN-IP (siehe homebridge_tesla.py).
+After=local-fs.target
 
 [Service]
 Type=simple
