@@ -19,6 +19,7 @@ Web-API:
 
 Szenen:
   Welcome 30s (Tesla Sommerupdate 2026) beim Daemon-Start und Taster GPIO 27.
+  Startanimation läuft ohne Netz; HomeKit erst nach LAN-IP.
 """
 
 from __future__ import annotations
@@ -29,7 +30,9 @@ import json
 import logging
 import os
 import signal
+import socket
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -84,6 +87,47 @@ THERMAL_PATH = Path("/sys/class/thermal/thermal_zone0/temp")
 # pin → Accessory (für Web-API ↔ HomeKit)
 REGISTRY: dict[int, Accessory] = {}
 SCENE_PLAYER: ScenePlayer | None = None
+STRIPS = None
+STOP = threading.Event()
+DRIVER: AccessoryDriver | None = None
+
+
+def local_ipv4() -> str | None:
+    """Nicht-lokale IPv4, sobald eine Route existiert (kein Internet-Ping)."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.settimeout(0.2)
+        sock.connect(("1.1.1.1", 80))
+        ip = sock.getsockname()[0]
+        if ip and not ip.startswith("127."):
+            return ip
+        return None
+    except OSError:
+        return None
+    finally:
+        sock.close()
+
+
+def wait_for_lan() -> str:
+    """Blockiert bis eine LAN-IP da ist. GPIO und Animation laufen parallel."""
+    ip = local_ipv4()
+    if ip:
+        return ip
+    log.info("HomeKit wartet auf LAN-IP (kein Timeout, Startanimation läuft unabhängig)")
+    while not STOP.is_set():
+        ip = local_ipv4()
+        if ip:
+            log.info("LAN-IP %s da, HomeKit startet", ip)
+            return ip
+        time.sleep(0.5)
+    raise SystemExit(0)
+
+
+def request_stop(signum=None, frame=None) -> None:
+    STOP.set()
+    driver = DRIVER
+    if driver is not None:
+        driver.signal_handler(signum or signal.SIGTERM, frame)
 
 
 def read_cpu_temp_c() -> float:
@@ -242,10 +286,7 @@ def write_scene_pixels(
     rear: list[tuple[int, int, int]],
     passenger: list[tuple[int, int, int]],
 ) -> None:
-    strips = None
-    acc = REGISTRY.get(PINS["ruecksitzbank"])
-    if isinstance(acc, ColorLamp):
-        strips = acc.strips
+    strips = STRIPS
     if strips is None:
         return
     strips.write_pixels(
@@ -637,18 +678,10 @@ def get_bridge(driver, strips) -> Bridge:
 
 
 def main() -> None:
-    global SCENE_PLAYER
+    global SCENE_PLAYER, STRIPS, DRIVER
 
-    strips = init_strips()
+    STRIPS = init_strips()
     start_web_server(WEB_PORT)
-
-    driver = AccessoryDriver(
-        port=HAP_PORT,
-        persist_file=str(STATE_FILE),
-        pincode=PAIRING_PIN,
-    )
-    bridge = get_bridge(driver, strips)
-    driver.add_accessory(accessory=bridge)
 
     SCENE_PLAYER = build_scene_player()
     button = None
@@ -658,9 +691,23 @@ def main() -> None:
         log.error("Taster GPIO %s nicht verfügbar: %s", PINS["taster"], exc)
     SCENE_PLAYER.request_start("daemon")
 
-    log.info("HomeKit Pairing-Code: %s", PAIRING_PIN.decode())
-    signal.signal(signal.SIGTERM, driver.signal_handler)
+    signal.signal(signal.SIGTERM, request_stop)
+    signal.signal(signal.SIGINT, request_stop)
+
     try:
+        address = wait_for_lan()
+        driver = AccessoryDriver(
+            port=HAP_PORT,
+            persist_file=str(STATE_FILE),
+            pincode=PAIRING_PIN,
+            address=address,
+        )
+        DRIVER = driver
+        bridge = get_bridge(driver, STRIPS)
+        driver.add_accessory(accessory=bridge)
+        log.info("HomeKit Pairing-Code: %s", PAIRING_PIN.decode())
+        if STOP.is_set():
+            return
         driver.start()
     finally:
         SCENE_PLAYER.stop()
@@ -669,7 +716,7 @@ def main() -> None:
                 button.close()
             except Exception:
                 pass
-        strips.close()
+        STRIPS.close()
 
 
 if __name__ == "__main__":
