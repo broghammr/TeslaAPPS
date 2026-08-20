@@ -7,6 +7,7 @@
  *
  * API:
  *   POST {base}/gpio/set  pin=&state=0|1  [h,s,brightness,r,g,b]
+ *   POST {base}/scene/start  Welcome-Szene (Chibi-Kachel)
  *   GET  {base}/status
  */
 
@@ -15,7 +16,9 @@ const NGROK_TUNNEL_BASE = "https://placate-impale-nautical.ngrok-free.dev";
 const API_BASE = NGROK_TUNNEL_BASE || "http://localhost:8080";
 const API_SET = `${API_BASE}/gpio/set`;
 const API_STATUS = `${API_BASE}/status`;
+const API_SCENE_START = `${API_BASE}/scene/start`;
 const API_HEADERS = { "ngrok-skip-browser-warning": "1" };
+const CHIBI_IMAGE = "../assets/chibi.jpg";
 
 const ICON = "../assets/light.svg";
 const WHEEL_SIZE = 200;
@@ -129,6 +132,73 @@ function createColorState() {
   const color = { h: 210, s: 0.85, v: 0.85, r: 0, g: 0, b: 0 };
   syncRgb(color);
   return color;
+}
+
+async function postSceneStart() {
+  const init = {
+    method: "POST",
+    headers: { ...API_HEADERS },
+  };
+
+  try {
+    const res = await fetch(API_SCENE_START, { ...init, mode: "cors" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } catch (err) {
+    if (err instanceof TypeError) {
+      await fetch(API_SCENE_START, { ...init, mode: "no-cors" });
+      return;
+    }
+    throw err;
+  }
+}
+
+async function startWelcomeScene(tile) {
+  if (!tile || tile.dataset.busy === "1") return;
+
+  tile.dataset.busy = "1";
+  tile.classList.add("tile--busy");
+  tile.setAttribute("aria-label", "Chibi: Startanimation wird gestartet");
+  announce("Startanimation wird gestartet.");
+
+  try {
+    await postSceneStart();
+    tile.setAttribute("aria-label", "Chibi: Startanimation läuft");
+    announce("Startanimation läuft.");
+  } catch (err) {
+    console.warn("Startanimation nicht gestartet:", err);
+    tile.setAttribute(
+      "aria-label",
+      "Chibi: Startanimation nicht gestartet. Tippen zum erneuten Versuch."
+    );
+    announce("Startanimation nicht gestartet. Raspberry Pi erreichbar?");
+  } finally {
+    tile.dataset.busy = "0";
+    tile.classList.remove("tile--busy");
+    tile.setAttribute("aria-label", "Chibi: Startanimation starten");
+  }
+}
+
+function createChibiTile() {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = "tile tile--image tile--chibi";
+  el.setAttribute("role", "listitem");
+  el.dataset.topicId = "chibi";
+  el.title = "Chibi: Startanimation starten";
+  el.setAttribute("aria-label", "Chibi: Startanimation starten");
+  el.innerHTML = `
+    <img
+      class="tile__image"
+      src="${escapeHtml(CHIBI_IMAGE)}"
+      alt="Chibi: Startanimation starten"
+      loading="lazy"
+      decoding="async"
+    />
+  `;
+  el.addEventListener("click", () => {
+    startWelcomeScene(el);
+  });
+  return el;
 }
 
 async function postGpio(fields) {
@@ -605,6 +675,7 @@ function renderPage() {
         : createSwitchTile(device)
     );
   }
+  fragment.appendChild(createChibiTile());
   grid.appendChild(fragment);
 }
 

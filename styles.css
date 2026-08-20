@@ -281,6 +281,17 @@ a {
   background: var(--bg-tile);
 }
 
+.tile--chibi:hover,
+.tile--chibi:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
+}
+
+.tile--chibi.tile--busy {
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 .tile__image {
   display: block;
   position: absolute;

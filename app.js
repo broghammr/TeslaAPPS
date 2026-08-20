@@ -7,14 +7,13 @@
 /** SVG-Icons aus assets/ */
 const ICONS = {
   helloWorld: "assets/code.svg",
-  car: "assets/tesla.svg",
-  rocket: "assets/rocket.svg",
   light: "assets/light.svg",
   monitor: "assets/monitor.svg",
 };
 
 const NGROK_TUNNEL_BASE = "https://placate-impale-nautical.ngrok-free.dev";
 const API_TEMP = `${NGROK_TUNNEL_BASE}/temp`;
+const API_SCENE_START = `${NGROK_TUNNEL_BASE}/scene/start`;
 const API_HEADERS = { "ngrok-skip-browser-warning": "1" };
 
 const TOPICS = [
@@ -26,24 +25,6 @@ const TOPICS = [
     href: "topics/hello-world.html",
     ready: true,
     status: "Öffnen",
-  },
-  {
-    id: "tesla",
-    title: "Tesla",
-    subtitle: "Fahrzeug, Updates und nützliche Infos",
-    icon: ICONS.car,
-    href: "topics/tesla.html",
-    ready: false,
-    status: "Bald verfügbar",
-  },
-  {
-    id: "spacex",
-    title: "SpaceX",
-    subtitle: "Starts, Missionen und Spaceflight",
-    icon: ICONS.rocket,
-    href: "topics/spacex.html",
-    ready: false,
-    status: "Bald verfügbar",
   },
   {
     id: "light",
@@ -65,23 +46,25 @@ const TOPICS = [
   },
   {
     id: "chibi",
-    /** Bild-Kachel: nur Vollformat-Bild, ohne Icon/Titel/Status */
+    kind: "chibi",
     image: "assets/chibi.jpg",
-    imageAlt: "Chibi",
-    ready: false,
+    imageAlt: "Chibi: Startanimation starten",
+    ready: true,
   },
 ];
 
 function createTile(topic) {
   const isImageTile = Boolean(topic.image);
   const isMonitor = topic.kind === "monitor";
-  const isLink = Boolean(topic.ready && topic.href && !isMonitor);
+  const isChibi = topic.kind === "chibi";
+  const isLink = Boolean(topic.ready && topic.href && !isMonitor && !isChibi);
   const el = document.createElement(isLink ? "a" : "button");
   el.className =
     "tile" +
     (!topic.ready && !isImageTile ? " tile--soon" : "") +
     (isImageTile ? " tile--image" : "") +
-    (isMonitor ? " tile--monitor" : "");
+    (isMonitor ? " tile--monitor" : "") +
+    (isChibi ? " tile--chibi" : "");
   el.setAttribute("role", "listitem");
   el.dataset.topicId = topic.id;
 
@@ -89,7 +72,10 @@ function createTile(topic) {
     el.href = topic.href;
   } else {
     el.type = "button";
-    if (isImageTile) {
+    if (isChibi) {
+      el.title = topic.imageAlt || "Chibi";
+      el.setAttribute("aria-label", topic.imageAlt || "Chibi: Startanimation starten");
+    } else if (isImageTile) {
       el.title = topic.imageAlt || "Bild";
       el.setAttribute("aria-label", topic.imageAlt || "Bild");
     } else if (isMonitor) {
@@ -140,6 +126,10 @@ function createTile(topic) {
       refreshMonitorTile(el, { announceResult: true });
     });
     refreshMonitorTile(el);
+  } else if (isChibi) {
+    el.addEventListener("click", () => {
+      startWelcomeScene(el);
+    });
   } else if (!topic.ready && !isImageTile) {
     el.addEventListener("click", () => {
       announce(`${topic.title} ist noch nicht freigeschaltet.`);
@@ -154,6 +144,50 @@ function formatCelsius(value) {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })} °C`;
+}
+
+async function postSceneStart() {
+  const init = {
+    method: "POST",
+    headers: { ...API_HEADERS },
+  };
+
+  try {
+    const res = await fetch(API_SCENE_START, { ...init, mode: "cors" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } catch (err) {
+    if (err instanceof TypeError) {
+      await fetch(API_SCENE_START, { ...init, mode: "no-cors" });
+      return;
+    }
+    throw err;
+  }
+}
+
+async function startWelcomeScene(tile) {
+  if (!tile || tile.dataset.busy === "1") return;
+
+  tile.dataset.busy = "1";
+  tile.classList.add("tile--busy");
+  tile.setAttribute("aria-label", "Chibi: Startanimation wird gestartet");
+  announce("Startanimation wird gestartet.");
+
+  try {
+    await postSceneStart();
+    tile.setAttribute("aria-label", "Chibi: Startanimation läuft");
+    announce("Startanimation läuft.");
+  } catch (err) {
+    console.warn("Startanimation nicht gestartet:", err);
+    tile.setAttribute(
+      "aria-label",
+      "Chibi: Startanimation nicht gestartet. Tippen zum erneuten Versuch."
+    );
+    announce("Startanimation nicht gestartet. Raspberry Pi erreichbar?");
+  } finally {
+    tile.dataset.busy = "0";
+    tile.classList.remove("tile--busy");
+    tile.setAttribute("aria-label", "Chibi: Startanimation starten");
+  }
 }
 
 async function fetchCpuTemp() {

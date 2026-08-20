@@ -39,8 +39,6 @@ const ROADTRIP_FILES = [
   "hw_202401_Wintertour_Leipzig.jpg",
 ];
 
-const CHIBI_IMAGE = "../assets/chibi.jpg";
-
 /**
  * Parst hw_YYYYMM_Event_Ort.ext → { dateKey, caption, image, imageAlt }
  */
@@ -116,26 +114,6 @@ function createPhotoTile(item) {
   return el;
 }
 
-function createImageOnlyTile(src, alt, id) {
-  const el = document.createElement("div");
-  el.className = "tile tile--image";
-  el.setAttribute("role", "listitem");
-  el.dataset.topicId = id;
-  el.setAttribute("aria-label", alt);
-
-  el.innerHTML = `
-    <img
-      class="tile__image"
-      src="${escapeHtml(src)}"
-      alt="${escapeHtml(alt)}"
-      loading="lazy"
-      decoding="async"
-    />
-  `;
-
-  return el;
-}
-
 function renderRoadtrips() {
   const grid = document.getElementById("tile-grid");
   if (!grid) return;
@@ -144,10 +122,6 @@ function renderRoadtrips() {
   for (const trip of buildRoadtrips()) {
     fragment.appendChild(createPhotoTile(trip));
   }
-  // Letzte Kachel: Chibi vollflächig
-  fragment.appendChild(
-    createImageOnlyTile(CHIBI_IMAGE, "Chibi", "chibi")
-  );
   grid.appendChild(fragment);
 }
 

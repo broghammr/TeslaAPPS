@@ -14,15 +14,13 @@ UI Design:
 * Keine Titelleiste/ Kopfzeile oder ähnliches, nur Überschrift und dann die Kacheln für die Themen
 * Kacheln haben ein Icon, eine Überschrift und eine Unterüberschrift, sowie eine Statuszeile
 * Die Icons der Kacheln sind Piktogramme
-* Die fünfte Kachel ist die Themenkachel "Monitor" (mn)
 
 Inhalt:
 * Main Hub (index.html): Übersicht der Themen im "Kachel-Design"
-* Themen: Hello World (hw), Tesla, SpaceX, Light (lt), Monitor (mn)
+* Themen: Hello World (hw), Light (lt), Monitor (mn), Chibi (cb)
 
 Themenseite "Hello World" (hw)
 * Inhalt: Unsere Roadtrips werden angezeigt
-* Kachellayout zeigt vollflächig assets/chibi.jpg
 * Pro Roadtrip eine Kachel mit je einem vollflächigen Bild
 * Ort und Zeitraum des Roadtrips in der Fußzeile
 * Die Fußzeile wird halbtransparent über das vollflächigen Bild innerhalb der Kachel gelegt
@@ -34,12 +32,17 @@ Themenseite "Light" (lt)
 * Inhalt: Steuerung der Beleuchtung im Auto
 * Gleiches Kachellayout wie "Main Hub"
 * Eine Kachel für den Sternenhimmel, On/Off Schalter; Ansteuerung siehe Projekt 02 Raspi
-* Für die Rücksitzbank und den Beifahrer je eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; in der Statuszeile gewählte Farbe als RGB-Werte + gewählte Helligkeit in %; Ansteuerung siehe Projekt 02 Raspi 
+* Für die Rücksitzbank und den Beifahrer je eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; in der Statuszeile gewählte Farbe als RGB-Werte + gewählte Helligkeit in %; Ansteuerung siehe Projekt 02 Raspi
+* Zusätzlich zum Mainhub als letzte Kachel auch die Themenkachel "Chibi" (cb) anfügen
 
 Themenkachel "Monitor" (mn)
-* Nur eine Kachel mit Inhalt, aber ohne Unterseite
+* Nur eine Kachel mit Inhalt, keine Unterseite
 * Inhalt: Temparatur des Raspi
 * Temparatur wir beim Laden der Seite aktualisiert und bei einem Touch auf die Kachel, kein automatischer Refresh
+
+Themenkachel "Chibi" (cb)
+* Kachellayout zeigt vollflächig assets/chibi.jpg, keine Unterseite
+* Wenn Kachel gedrück wird soll die Startanimation (siehe Projekt Raspi) gestartet werden
 
 Deployment:
 * Deployment über GitHub Pages
