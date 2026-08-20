@@ -34,14 +34,14 @@ const DEVICES = [
     name: "Rücksitzbank",
     pin: 12,
     kind: "color",
-    subtitle: "Farbe + Helligkeit",
+    subtitle: "Farbauswahl",
   },
   {
     id: "beifahrer",
     name: "Beifahrer",
     pin: 13,
     kind: "color",
-    subtitle: "Farbe + Helligkeit",
+    subtitle: "Farbauswahl",
   },
 ];
 
@@ -200,8 +200,11 @@ function switchStatusLabel(entry) {
 function colorStatusLabel(entry) {
   const p = colorPayload(entry.color);
   if (entry.busy) return "Befehl wird gesendet…";
-  const rgb = `RGB ${p.r}, ${p.g}, ${p.b} · ${p.brightness} %`;
-  return entry.on ? `An · ${rgb}` : `Aus · ${rgb}`;
+  return `RGB ${p.r}, ${p.g}, ${p.b} · ${p.brightness} %`;
+}
+
+function colorSubtitleLabel(entry) {
+  return entry.on ? "eingeschaltet" : "ausgeschaltet";
 }
 
 function updateTileUi(device, entry) {
@@ -222,11 +225,15 @@ function updateTileUi(device, entry) {
 
   const subtitle = tile.querySelector(".tile__subtitle");
   if (subtitle) {
-    subtitle.textContent = entry.busy
-      ? "Befehl wird gesendet…"
-      : entry.on
-        ? `${device.subtitle} · eingeschaltet`
-        : `${device.subtitle} · ausgeschaltet`;
+    if (device.kind === "color") {
+      subtitle.textContent = colorSubtitleLabel(entry);
+    } else {
+      subtitle.textContent = entry.busy
+        ? "Befehl wird gesendet…"
+        : entry.on
+          ? `${device.subtitle} · eingeschaltet`
+          : `${device.subtitle} · ausgeschaltet`;
+    }
   }
 
   const status = tile.querySelector(".tile__status");
@@ -473,52 +480,40 @@ function createColorTile(device) {
       ${deviceIconHtml()}
       <span class="tile__body tile__body--color">
         <span class="tile__title">${escapeHtml(device.name)}</span>
-        <span class="tile__subtitle">${escapeHtml(device.subtitle)} · ausgeschaltet</span>
+        <span class="tile__subtitle">ausgeschaltet</span>
       </span>
     </button>
     <div class="color-picker">
-      <div class="color-picker__row">
-        <canvas
-          class="color-picker__wheel"
-          width="${WHEEL_SIZE}"
-          height="${WHEEL_SIZE}"
-          role="img"
-          aria-label="${escapeHtml(device.name)}: Farbkreis"
-        ></canvas>
-        <div class="color-picker__side">
-          <div class="color-picker__swatch" aria-hidden="true"></div>
-          <label class="color-picker__brightness">
-            <span class="color-picker__brightness-label">
-              Helligkeit
-              <span class="color-picker__brightness-value">85 %</span>
-            </span>
-            <input
-              class="color-picker__slider"
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value="85"
-              aria-label="${escapeHtml(device.name)} Helligkeit"
-            />
-          </label>
-        </div>
-      </div>
+      <canvas
+        class="color-picker__wheel"
+        width="${WHEEL_SIZE}"
+        height="${WHEEL_SIZE}"
+        role="img"
+        aria-label="${escapeHtml(device.name)}: Farbkreis"
+      ></canvas>
+      <label class="color-picker__brightness">
+        <span class="color-picker__brightness-label">Helligkeit</span>
+        <input
+          class="color-picker__slider"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value="85"
+          aria-label="${escapeHtml(device.name)} Helligkeit"
+        />
+      </label>
     </div>
     <span class="tile__status">${escapeHtml(colorStatusLabel(entry))}</span>
   `;
 
   const canvas = el.querySelector(".color-picker__wheel");
-  const swatch = el.querySelector(".color-picker__swatch");
   const slider = el.querySelector(".color-picker__slider");
-  const brightValue = el.querySelector(".color-picker__brightness-value");
   const power = el.querySelector("[data-role=power]");
 
   function refreshColor() {
     drawColorWheel(canvas, color);
-    swatch.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
     const pct = Math.round(color.v * 100);
-    brightValue.textContent = `${pct} %`;
     if (Number(slider.value) !== pct) slider.value = String(pct);
     el.dataset.colorR = String(color.r);
     el.dataset.colorG = String(color.g);
