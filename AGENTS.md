@@ -1,8 +1,8 @@
-Allgemeine Anweisungen:
+# Allgemeine Anweisungen:
 * Dateien in ./assets niemals löschen
 * Commit oder Push nur auf explizite Anfrage durchführen
 
-Projekt 01: Tesla Browser Hub:
+# Projekt 01: Tesla Browser Hub:
 
 * Eigene Website die über den Browser im Tesla Model 3 Highland aufgerufen werden kann
 
@@ -51,7 +51,7 @@ Deployment:
 * Workflow: `.github/workflows/pages.yml` (Push auf `main`)
 * Einmalig nötig: Repo → Settings → Pages → Source = **GitHub Actions**
 
-Projekt 02: Raspberry Pi 4 Model B, 1GB RAM:
+# Projekt 02: Raspberry Pi 4 Model B, 1GB RAM:
 
 * Steuerung der Beleuchtung im Tesla Model 3 Highland mit einem Raspberry Pi 4
 
@@ -61,7 +61,7 @@ Quellen:
 Geräte
 * Relais an GPIO 17 (active_high=False): grüner Sternenhimmel (On/Off Lampe)
 * WS2812 WLED Streifen mit 76 LEDs an GPIO 12 (PWM0): Rücksitzbank (Farblampe)
-* WS2812 WLED Streifen mit 16 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
+* WS2812 WLED Streifen mit 24 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
 * Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
 
 Deployment
