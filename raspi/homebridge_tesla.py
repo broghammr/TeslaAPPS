@@ -71,7 +71,7 @@ PINS = {
 # LED-Anzahl pro Streifen (oder Env WS2812_COUNT_*)
 LED_COUNT = {
     "ruecksitzbank": int(os.environ.get("WS2812_COUNT_RUECKSITZBANK", "76")),
-    "beifahrer": int(os.environ.get("WS2812_COUNT_BEIFAHRER", "16")),
+    "beifahrer": int(os.environ.get("WS2812_COUNT_BEIFAHRER", "24")),
 }
 
 PWM = {
