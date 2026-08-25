@@ -34,6 +34,7 @@ Themenseite "Light" (lt)
 * Eine Kachel für den Sternenhimmel, On/Off Schalter; Ansteuerung siehe Projekt 02 Raspi
 * Für die Rücksitzbank und den Beifahrer je eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; in der Statuszeile gewählte Farbe als RGB-Werte + gewählte Helligkeit in %; Ansteuerung siehe Projekt 02 Raspi
 * Zusätzlich zum Mainhub als letzte Kachel auch die Themenkachel "Chibi" (cb) anfügen
+* Reihenfolge Beifahrer, Rücksitzbank, Sternenhimmel, Chibi
 
 Themenkachel "Monitor" (mn)
 * Nur eine Kachel mit Inhalt, keine Unterseite
