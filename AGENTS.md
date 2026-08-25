@@ -61,7 +61,7 @@ Quellen:
 
 Geräte
 * Relais an GPIO 17 (active_high=False): grüner Sternenhimmel (On/Off Lampe)
-* WS2812 WLED Streifen mit 76 LEDs an GPIO 12 (PWM0): Rücksitzbank (Farblampe)
+* WS2812 WLED Streifen mit 65 LEDs an GPIO 12 (PWM0): Rücksitzbank (Farblampe)
 * WS2812 WLED Streifen mit 24 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
 * Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
 
