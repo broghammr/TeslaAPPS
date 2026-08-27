@@ -20,6 +20,7 @@ Web-API:
 Szenen:
   Welcome 30s (Tesla Sommerupdate 2026) beim Daemon-Start und Taster GPIO 27.
   Startanimation läuft ohne Netz; HomeKit erst nach LAN-IP.
+  HAP lauscht auf 0.0.0.0; mDNS folgt später LAN-IP-Wechseln.
 """
 
 from __future__ import annotations
@@ -42,6 +43,7 @@ from gpiozero.pins.lgpio import LGPIOFactory
 from pyhap.accessory import Accessory, Bridge
 from pyhap.accessory_driver import AccessoryDriver
 from pyhap.const import CATEGORY_LIGHTBULB, CATEGORY_SWITCH
+from zeroconf import InterfaceChoice
 
 from light_scenes import TESLA_ICE, ScenePlayer
 
@@ -83,6 +85,7 @@ HAP_PORT = 51826
 WEB_PORT = 8080
 PAIRING_PIN = b"031-45-154"
 THERMAL_PATH = Path("/sys/class/thermal/thermal_zone0/temp")
+LAN_WATCH_INTERVAL_S = 2.0
 
 # pin → Accessory (für Web-API ↔ HomeKit)
 REGISTRY: dict[int, Accessory] = {}
@@ -92,8 +95,8 @@ STOP = threading.Event()
 DRIVER: AccessoryDriver | None = None
 
 
-def local_ipv4() -> str | None:
-    """Nicht-lokale IPv4, sobald eine Route existiert (kein Internet-Ping)."""
+def _ipv4_via_route() -> str | None:
+    """Nicht-lokale IPv4 über die Default-Route (kein Internet-Ping)."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.settimeout(0.2)
@@ -106,6 +109,32 @@ def local_ipv4() -> str | None:
         return None
     finally:
         sock.close()
+
+
+def _ipv4_via_interfaces() -> str | None:
+    """Erste nicht-lokale IPv4 einer echten Schnittstelle (LAN ohne Default-Route)."""
+    try:
+        import ifaddr
+    except ImportError:
+        return None
+    skip_prefix = ("lo", "docker", "br-", "veth", "tun", "wg")
+    for adapter in ifaddr.get_adapters():
+        name = (adapter.nice_name or adapter.name or "").lower()
+        if name.startswith(skip_prefix):
+            continue
+        for ipinfo in adapter.ips:
+            ip = ipinfo.ip
+            if not isinstance(ip, str):
+                continue
+            if ip.startswith(("127.", "169.254.")):
+                continue
+            return ip
+    return None
+
+
+def local_ipv4() -> str | None:
+    """Aktuelle LAN-IPv4: Default-Route, sonst erste Schnittstellen-Adresse."""
+    return _ipv4_via_route() or _ipv4_via_interfaces()
 
 
 def wait_for_lan() -> str:
@@ -121,6 +150,64 @@ def wait_for_lan() -> str:
             return ip
         time.sleep(0.5)
     raise SystemExit(0)
+
+
+def homekit_driver_kwargs(address: str) -> dict:
+    """HAP lauscht auf allen IPs, mDNS wirbt mit der aktuellen LAN-Adresse."""
+    return {
+        "port": HAP_PORT,
+        "persist_file": str(STATE_FILE),
+        "pincode": PAIRING_PIN,
+        "listen_address": "0.0.0.0",
+        "advertised_address": address,
+        "interface_choice": InterfaceChoice.All,
+    }
+
+
+def next_lan_watch_state(
+    current: str, lost: bool, new_ip: str | None
+) -> tuple[str, bool, bool]:
+    """Nächster LAN-Wächter-Zustand: (current_ip, lost, should_refresh_mdns)."""
+    if new_ip is None:
+        return current, True, False
+    if lost or new_ip != current:
+        return new_ip, False, True
+    return current, False, False
+
+
+def apply_advertised_address(driver: AccessoryDriver, ip: str) -> None:
+    """Aktualisiert die HomeKit-mDNS-Anzeige auf eine neue LAN-IP."""
+    driver.state.addresses = [ip]
+    if getattr(driver, "mdns_service_info", None) is None:
+        log.info("HomeKit-mDNS noch nicht aktiv, werbe später mit %s", ip)
+        return
+    try:
+        driver.update_advertisement()
+    except Exception:
+        log.exception("HomeKit-mDNS Update auf %s fehlgeschlagen", ip)
+
+
+def watch_lan_ip(driver: AccessoryDriver, initial: str) -> None:
+    """Erkennt IP-Verlust und Netzwechsel und erneuert die HomeKit-Anzeige."""
+    current = initial
+    lost = False
+    log.info("LAN-Wächter aktiv, HomeKit wirbt mit %s", current)
+    while not STOP.wait(LAN_WATCH_INTERVAL_S):
+        new_ip = local_ipv4()
+        next_current, next_lost, refresh = next_lan_watch_state(current, lost, new_ip)
+        if next_lost and not lost:
+            log.warning("LAN-IP %s weg, HomeKit wartet auf neues Netz", current)
+        elif refresh:
+            if lost and new_ip == current:
+                log.info("LAN-IP %s wieder da, HomeKit-mDNS wird erneuert", new_ip)
+            else:
+                log.info(
+                    "LAN-IP-Wechsel %s → %s, HomeKit-mDNS wird aktualisiert",
+                    current,
+                    new_ip,
+                )
+            apply_advertised_address(driver, next_current)
+        current, lost = next_current, next_lost
 
 
 def request_stop(signum=None, frame=None) -> None:
@@ -546,6 +633,12 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
                 if SCENE_PLAYER is not None
                 else {"name": None, "running": False, "duration": 30.0}
             )
+            driver = DRIVER
+            payload["homekit"] = {
+                "advertised_address": list(driver.state.addresses) if driver else [],
+                "port": HAP_PORT,
+                "waiting_for_lan": driver is None,
+            }
             self._send(200, payload)
             return
         if path == "/temp":
@@ -696,18 +789,20 @@ def main() -> None:
 
     try:
         address = wait_for_lan()
-        driver = AccessoryDriver(
-            port=HAP_PORT,
-            persist_file=str(STATE_FILE),
-            pincode=PAIRING_PIN,
-            address=address,
-        )
+        driver = AccessoryDriver(**homekit_driver_kwargs(address))
         DRIVER = driver
         bridge = get_bridge(driver, STRIPS)
         driver.add_accessory(accessory=bridge)
         log.info("HomeKit Pairing-Code: %s", PAIRING_PIN.decode())
+        log.info("HomeKit lauscht auf 0.0.0.0:%s, mDNS wirbt %s", HAP_PORT, address)
         if STOP.is_set():
             return
+        threading.Thread(
+            target=watch_lan_ip,
+            args=(driver, address),
+            daemon=True,
+            name="lan-watch",
+        ).start()
         driver.start()
     finally:
         SCENE_PLAYER.stop()
