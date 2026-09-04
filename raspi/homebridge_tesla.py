@@ -3,11 +3,13 @@
 Tesla Model 3 Highland – HomeKit Bridge + Web-API
 
 Geräte (AGENTS.md):
-  - Sternenhimmel  → GPIO 17  On/Off-Schalter
+  - Sternenhimmel  → GPIO 17  On/Off-Schalter (active_high=False)
   - Rücksitzbank   → GPIO 12  WS2812 Farblampe (PWM0)
   - Beifahrer      → GPIO 13  WS2812 Farblampe (PWM1)
+  - Lüfter         → GPIO 22  On/Off-Schalter (active_high=True)
+  - Lüfter-LEDs    → GPIO 10  WS2812 Farblampe (SPI MOSI, 12 LEDs)
 
-HomeKit: Bridge „Tesla Bridge“ mit Switch + zwei Color-Lightbulbs.
+HomeKit: Bridge „Tesla Bridge“ mit Switches + Color-Lightbulbs.
 
 Web-API:
   POST /gpio/set   pin=XX&state=0|1
@@ -19,6 +21,7 @@ Web-API:
 
 Szenen:
   Welcome 30s (Tesla Sommerupdate 2026) beim Daemon-Start und Taster GPIO 27.
+  Nutzt Rücksitzbank, Beifahrer und Lüfter-LEDs (nicht Sternenhimmel/Lüftermotor).
   Startanimation läuft ohne Netz; HomeKit erst nach LAN-IP.
   HAP lauscht auf 0.0.0.0; mDNS folgt später LAN-IP-Wechseln.
 """
@@ -67,6 +70,8 @@ PINS = {
     "sternenhimmel": 17,
     "ruecksitzbank": 12,
     "beifahrer": 13,
+    "luefter": 22,
+    "luefter_leds": 10,
     "taster": 27,
 }
 
@@ -74,12 +79,21 @@ PINS = {
 LED_COUNT = {
     "ruecksitzbank": int(os.environ.get("WS2812_COUNT_RUECKSITZBANK", "76")),
     "beifahrer": int(os.environ.get("WS2812_COUNT_BEIFAHRER", "24")),
+    "luefter_leds": int(os.environ.get("WS2812_COUNT_LUEFTER", "12")),
 }
 
 PWM = {
     "ruecksitzbank": {"pin": PINS["ruecksitzbank"], "channel": 0},
     "beifahrer": {"pin": PINS["beifahrer"], "channel": 1},
 }
+
+# SPI-Strip (GPIO 10) braucht einen anderen DMA-Kanal als DualPwmStrips (DMA 10).
+SPI_DMA = int(os.environ.get("WS2812_SPI_DMA", "5"))
+SCENE_STRIP_PINS = (
+    PINS["ruecksitzbank"],
+    PINS["beifahrer"],
+    PINS["luefter_leds"],
+)
 
 HAP_PORT = 51826
 WEB_PORT = 8080
@@ -91,6 +105,7 @@ LAN_WATCH_INTERVAL_S = 2.0
 REGISTRY: dict[int, Accessory] = {}
 SCENE_PLAYER: ScenePlayer | None = None
 STRIPS = None
+FAN_STRIPS = None
 STOP = threading.Event()
 DRIVER: AccessoryDriver | None = None
 
@@ -333,7 +348,7 @@ class DualPwmStrips:
 
 
 class NullStrips:
-    """Fallback, wenn PWM nicht initialisiert werden kann."""
+    """Fallback, wenn PWM/SPI nicht initialisiert werden kann."""
 
     def fill(self, channel: int, r: int, g: int, b: int) -> None:
         log.warning("WS2812 nicht bereit (ch%s → %s,%s,%s)", channel, r, g, b)
@@ -345,12 +360,109 @@ class NullStrips:
         return
 
 
-def scene_owns_hardware() -> bool:
-    return SCENE_PLAYER is not None and SCENE_PLAYER.is_running
+class SpiStrip:
+    """WS2812 über SPI MOSI (GPIO 10), eigener DMA-Kanal neben DualPwmStrips."""
+
+    def __init__(
+        self,
+        count: int,
+        pin: int = 10,
+        freq_hz: int = 800_000,
+        dma: int = SPI_DMA,
+        brightness: int = 255,
+    ) -> None:
+        if ws is None:
+            raise RuntimeError("rpi_ws281x ist nicht installiert")
+        if pin != 10:
+            raise ValueError("SPI-WS2812 unterstützt nur GPIO 10 (MOSI)")
+
+        self._leds = ws.new_ws2811_t()
+        self._lock = threading.Lock()
+        self._closed = False
+        self.counts = {0: count}
+        gamma = list(range(256))
+
+        chan0 = ws.ws2811_channel_get(self._leds, 0)
+        ws.ws2811_channel_t_count_set(chan0, count)
+        ws.ws2811_channel_t_gpionum_set(chan0, pin)
+        ws.ws2811_channel_t_invert_set(chan0, 0)
+        ws.ws2811_channel_t_brightness_set(chan0, brightness)
+        ws.ws2811_channel_t_strip_type_set(chan0, ws.WS2811_STRIP_GRB)
+        ws.ws2811_channel_t_gamma_set(chan0, gamma)
+
+        chan1 = ws.ws2811_channel_get(self._leds, 1)
+        ws.ws2811_channel_t_count_set(chan1, 0)
+        ws.ws2811_channel_t_gpionum_set(chan1, 0)
+        ws.ws2811_channel_t_invert_set(chan1, 0)
+        ws.ws2811_channel_t_brightness_set(chan1, 0)
+
+        ws.ws2811_t_freq_set(self._leds, freq_hz)
+        ws.ws2811_t_dmanum_set(self._leds, dma)
+
+        self._channels = {0: chan0}
+
+        resp = ws.ws2811_init(self._leds)
+        if resp != 0:
+            err = ws.ws2811_get_return_t_str(resp)
+            ws.delete_ws2811_t(self._leds)
+            self._leds = None
+            raise RuntimeError(f"ws2811_init (SPI) fehlgeschlagen: {resp} ({err})")
+
+        atexit.register(self.close)
+        log.info("WS2812 SPI bereit: GPIO %s (%s LEDs, DMA %s)", pin, count, dma)
+
+    def fill(self, channel: int, r: int, g: int, b: int) -> None:
+        n = self.counts.get(channel, self.counts[0])
+        self.write_pixels({channel: [(int(r), int(g), int(b))] * n})
+
+    def write_pixels(self, frames: dict[int, list[tuple[int, int, int]]]) -> None:
+        if self._closed or self._leds is None or Color is None:
+            return
+        with self._lock:
+            for channum, pixels in frames.items():
+                chan = self._channels.get(channum) or self._channels[0]
+                n = self.counts.get(channum, self.counts[0])
+                for i in range(n):
+                    if i < len(pixels):
+                        r, g, b = pixels[i]
+                        color = Color(int(r) & 255, int(g) & 255, int(b) & 255)
+                    else:
+                        color = Color(0, 0, 0)
+                    ws.ws2811_led_set(chan, i, color)
+            resp = ws.ws2811_render(self._leds)
+            if resp != 0:
+                raise RuntimeError(
+                    f"ws2811_render (SPI): {resp} ({ws.ws2811_get_return_t_str(resp)})"
+                )
+
+    def close(self) -> None:
+        if self._closed or self._leds is None:
+            return
+        try:
+            try:
+                self.fill(0, 0, 0, 0)
+            except Exception:
+                pass
+            ws.ws2811_fini(self._leds)
+            ws.delete_ws2811_t(self._leds)
+        except Exception:
+            log.exception("WS2812 SPI cleanup")
+        finally:
+            self._closed = True
+            self._leds = None
+
+
+def scene_owns_hardware(pin: int | None = None) -> bool:
+    """Welcome-Szene blockiert Rücksitzbank, Beifahrer und Lüfter-LEDs."""
+    if SCENE_PLAYER is None or not SCENE_PLAYER.is_running:
+        return False
+    if pin is None:
+        return True
+    return pin in SCENE_STRIP_PINS
 
 
 def theme_from_lamps() -> tuple[int, int, int]:
-    for pin in (PINS["ruecksitzbank"], PINS["beifahrer"]):
+    for pin in (PINS["ruecksitzbank"], PINS["beifahrer"], PINS["luefter_leds"]):
         acc = REGISTRY.get(pin)
         if not isinstance(acc, ColorLamp):
             continue
@@ -362,9 +474,11 @@ def theme_from_lamps() -> tuple[int, int, int]:
 def snapshot_scene_state() -> dict:
     rear = REGISTRY.get(PINS["ruecksitzbank"])
     passenger = REGISTRY.get(PINS["beifahrer"])
+    fan = REGISTRY.get(PINS["luefter_leds"])
     return {
         "rear": rear._rgb() if isinstance(rear, ColorLamp) else (0, 0, 0),
         "pass": passenger._rgb() if isinstance(passenger, ColorLamp) else (0, 0, 0),
+        "fan": fan._rgb() if isinstance(fan, ColorLamp) else (0, 0, 0),
         "theme": theme_from_lamps(),
     }
 
@@ -372,16 +486,19 @@ def snapshot_scene_state() -> dict:
 def write_scene_pixels(
     rear: list[tuple[int, int, int]],
     passenger: list[tuple[int, int, int]],
+    fan: list[tuple[int, int, int]],
 ) -> None:
     strips = STRIPS
-    if strips is None:
-        return
-    strips.write_pixels(
-        {
-            PWM["ruecksitzbank"]["channel"]: rear,
-            PWM["beifahrer"]["channel"]: passenger,
-        }
-    )
+    if strips is not None:
+        strips.write_pixels(
+            {
+                PWM["ruecksitzbank"]["channel"]: rear,
+                PWM["beifahrer"]["channel"]: passenger,
+            }
+        )
+    fan_strips = FAN_STRIPS
+    if fan_strips is not None:
+        fan_strips.write_pixels({0: fan})
 
 
 def init_strips():
@@ -402,22 +519,47 @@ def init_strips():
         return NullStrips()
 
 
+def init_fan_strip():
+    try:
+        return SpiStrip(
+            count=LED_COUNT["luefter_leds"],
+            pin=PINS["luefter_leds"],
+            dma=SPI_DMA,
+        )
+    except Exception as exc:
+        log.error(
+            "WS2812 SPI-Init fehlgeschlagen (%s). "
+            "GPIO 10 braucht root und dtparam=spi=on (danach reboot). "
+            "HomeKit läuft weiter, Lüfter-LEDs bleiben dunkel.",
+            exc,
+        )
+        return NullStrips()
+
+
 class GpioSwitch(Accessory):
-    """On/Off-Schalter (Sternenhimmel)."""
+    """On/Off-Schalter (Sternenhimmel / Lüfter)."""
 
     category = CATEGORY_SWITCH
 
-    def __init__(self, driver, display_name, pin, *args, **kwargs):
+    def __init__(
+        self,
+        driver,
+        display_name,
+        pin,
+        *args,
+        active_high: bool = False,
+        **kwargs,
+    ):
         super().__init__(driver, display_name, *args, **kwargs)
         self.pin = pin
-        self.device = OutputDevice(pin, active_high=False, initial_value=False)
+        self.device = OutputDevice(pin, active_high=active_high, initial_value=False)
         self._on = False
 
         self.set_info_service(
             manufacturer="TeslaAPPS",
             model="Jacky Switch",
             serial_number=f"gpio-{pin}",
-            firmware_revision="1.1",
+            firmware_revision="1.2",
         )
 
         serv = self.add_preload_service("Switch")
@@ -427,7 +569,12 @@ class GpioSwitch(Accessory):
             setter_callback=self._set_on,
         )
         REGISTRY[pin] = self
-        log.info("%s an GPIO %s", display_name, pin)
+        log.info(
+            "%s an GPIO %s (active_high=%s)",
+            display_name,
+            pin,
+            active_high,
+        )
 
     def _apply(self) -> None:
         if self._on:
@@ -475,7 +622,7 @@ class ColorLamp(Accessory):
             manufacturer="TeslaAPPS",
             model="Jacky WS2812",
             serial_number=f"ws2812-gpio-{pin}",
-            firmware_revision="1.1",
+            firmware_revision="1.2",
         )
 
         serv = self.add_preload_service(
@@ -488,7 +635,7 @@ class ColorLamp(Accessory):
         self.char_bri = serv.configure_char("Brightness", value=self._bri)
         serv.setter_callback = self._set_chars
         REGISTRY[pin] = self
-        log.info("%s an GPIO %s (PWM-Kanal %s)", display_name, pin, channel)
+        log.info("%s an GPIO %s (Kanal %s)", display_name, pin, channel)
 
     def _rgb(self) -> tuple[int, int, int]:
         if not self._on or self._bri <= 0:
@@ -496,7 +643,7 @@ class ColorLamp(Accessory):
         return hsv_to_rgb(self._hue, self._sat, self._bri)
 
     def _apply(self) -> None:
-        if scene_owns_hardware():
+        if scene_owns_hardware(self.pin):
             return
         r, g, b = self._rgb()
         self.strips.fill(self.channel, r, g, b)
@@ -733,21 +880,22 @@ def build_scene_player() -> ScenePlayer:
     return ScenePlayer(
         rear_count=LED_COUNT["ruecksitzbank"],
         pass_count=LED_COUNT["beifahrer"],
+        fan_count=LED_COUNT["luefter_leds"],
         write_pixels=write_scene_pixels,
         snapshot=snapshot_scene_state,
     )
 
 
-def get_bridge(driver, strips) -> Bridge:
+def get_bridge(driver, strips, fan_strips) -> Bridge:
     bridge = Bridge(driver, "Tesla Bridge")
     bridge.set_info_service(
         manufacturer="TeslaAPPS",
         model="Jacky",
         serial_number="tesla-bridge-1",
-        firmware_revision="1.1",
+        firmware_revision="1.2",
     )
     bridge.add_accessory(
-        GpioSwitch(driver, "Sternenhimmel", PINS["sternenhimmel"])
+        GpioSwitch(driver, "Sternenhimmel", PINS["sternenhimmel"], active_high=False)
     )
     bridge.add_accessory(
         ColorLamp(
@@ -767,13 +915,26 @@ def get_bridge(driver, strips) -> Bridge:
             PWM["beifahrer"]["pin"],
         )
     )
+    bridge.add_accessory(
+        GpioSwitch(driver, "Lüfter", PINS["luefter"], active_high=True)
+    )
+    bridge.add_accessory(
+        ColorLamp(
+            driver,
+            "Lüfter-LEDs",
+            fan_strips,
+            0,
+            PINS["luefter_leds"],
+        )
+    )
     return bridge
 
 
 def main() -> None:
-    global SCENE_PLAYER, STRIPS, DRIVER
+    global SCENE_PLAYER, STRIPS, FAN_STRIPS, DRIVER
 
     STRIPS = init_strips()
+    FAN_STRIPS = init_fan_strip()
     start_web_server(WEB_PORT)
 
     SCENE_PLAYER = build_scene_player()
@@ -791,7 +952,7 @@ def main() -> None:
         address = wait_for_lan()
         driver = AccessoryDriver(**homekit_driver_kwargs(address))
         DRIVER = driver
-        bridge = get_bridge(driver, STRIPS)
+        bridge = get_bridge(driver, STRIPS, FAN_STRIPS)
         driver.add_accessory(accessory=bridge)
         log.info("HomeKit Pairing-Code: %s", PAIRING_PIN.decode())
         log.info("HomeKit lauscht auf 0.0.0.0:%s, mDNS wirbt %s", HAP_PORT, address)
@@ -812,6 +973,8 @@ def main() -> None:
             except Exception:
                 pass
         STRIPS.close()
+        if FAN_STRIPS is not None:
+            FAN_STRIPS.close()
 
 
 if __name__ == "__main__":

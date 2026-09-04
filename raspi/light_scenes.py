@@ -129,12 +129,19 @@ def welcome_frame(
     theme: tuple[int, int, int],
     restore_rear: tuple[int, int, int],
     restore_pass: tuple[int, int, int],
-) -> tuple[list[tuple[int, int, int]], list[tuple[int, int, int]]]:
-    """Ein Frame der 30-s-Welcome-Szene (nur LED-Streifen, kein Sternenhimmel)."""
+    fan_count: int = 0,
+    restore_fan: tuple[int, int, int] = (0, 0, 0),
+) -> tuple[
+    list[tuple[int, int, int]],
+    list[tuple[int, int, int]],
+    list[tuple[int, int, int]],
+]:
+    """Ein Frame der 30-s-Welcome-Szene (LED-Streifen inkl. Lüfter-LEDs, kein Sternenhimmel)."""
     t = max(0.0, min(float(t), WELCOME_DURATION_S))
     rear = _strip_pixels(t, rear_count, theme, restore_rear)
     passenger = _strip_pixels(t, pass_count, theme, restore_pass)
-    return rear, passenger
+    fan = _strip_pixels(t, fan_count, theme, restore_fan)
+    return rear, passenger, fan
 
 
 class ScenePlayer:
@@ -145,13 +152,20 @@ class ScenePlayer:
         *,
         rear_count: int,
         pass_count: int,
+        fan_count: int = 0,
         write_pixels: Callable[
-            [list[tuple[int, int, int]], list[tuple[int, int, int]]], None
+            [
+                list[tuple[int, int, int]],
+                list[tuple[int, int, int]],
+                list[tuple[int, int, int]],
+            ],
+            None,
         ],
         snapshot: Callable[[], dict],
     ) -> None:
         self.rear_count = rear_count
         self.pass_count = pass_count
+        self.fan_count = fan_count
         self._write_pixels = write_pixels
         self._snapshot = snapshot
         self._lock = threading.Lock()
@@ -227,15 +241,17 @@ class ScenePlayer:
                 if t >= WELCOME_DURATION_S:
                     break
                 live = self._snapshot()
-                rear, passenger = welcome_frame(
+                rear, passenger, fan = welcome_frame(
                     t,
                     self.rear_count,
                     self.pass_count,
                     theme,
                     live.get("rear") or (0, 0, 0),
                     live.get("pass") or (0, 0, 0),
+                    self.fan_count,
+                    live.get("fan") or (0, 0, 0),
                 )
-                self._write_pixels(rear, passenger)
+                self._write_pixels(rear, passenger, fan)
                 sleep_for = frame_dt - ((time.monotonic() - t0) % frame_dt)
                 if sleep_for > 0:
                     time.sleep(sleep_for)
@@ -256,7 +272,8 @@ class ScenePlayer:
     def _restore(self, snap: dict) -> None:
         rear = [snap.get("rear") or (0, 0, 0)] * self.rear_count
         passenger = [snap.get("pass") or (0, 0, 0)] * self.pass_count
+        fan = [snap.get("fan") or (0, 0, 0)] * self.fan_count
         try:
-            self._write_pixels(rear, passenger)
+            self._write_pixels(rear, passenger, fan)
         except Exception:
             log.exception("Restore Streifen")
