@@ -6,7 +6,7 @@ Geräte (AGENTS.md):
   - Sternenhimmel  → GPIO 17  On/Off-Schalter (active_high=False)
   - Rücksitzbank   → GPIO 12  WS2812 Farblampe (PWM0)
   - Beifahrer      → GPIO 13  WS2812 Farblampe (PWM1)
-  - Lüfter         → GPIO 22  On/Off-Schalter (active_high=True)
+  - Lüfter         → GPIO 22  On/Off-Schalter (active_high=True), beim Daemon-Start immer EIN
   - Lüfter-LEDs    → GPIO 10  WS2812 Farblampe (SPI MOSI, 12 LEDs)
 
 HomeKit: Bridge „Tesla Bridge“ mit Switches + Color-Lightbulbs.
@@ -106,6 +106,8 @@ REGISTRY: dict[int, Accessory] = {}
 SCENE_PLAYER: ScenePlayer | None = None
 STRIPS = None
 FAN_STRIPS = None
+FAN_RELAY: OutputDevice | None = None
+FAN_RELAY_ACTIVE_HIGH = True
 STOP = threading.Event()
 DRIVER: AccessoryDriver | None = None
 
@@ -536,6 +538,21 @@ def init_fan_strip():
         return NullStrips()
 
 
+def init_fan_relay() -> OutputDevice:
+    """Lüftermotor sofort einschalten, noch vor HomeKit/LAN."""
+    device = OutputDevice(
+        PINS["luefter"],
+        active_high=FAN_RELAY_ACTIVE_HIGH,
+        initial_value=True,
+    )
+    log.info(
+        "Lüfter beim Start EIN (GPIO %s, active_high=%s)",
+        PINS["luefter"],
+        FAN_RELAY_ACTIVE_HIGH,
+    )
+    return device
+
+
 class GpioSwitch(Accessory):
     """On/Off-Schalter (Sternenhimmel / Lüfter)."""
 
@@ -548,12 +565,16 @@ class GpioSwitch(Accessory):
         pin,
         *args,
         active_high: bool = False,
+        initial_on: bool = False,
+        device: OutputDevice | None = None,
         **kwargs,
     ):
         super().__init__(driver, display_name, *args, **kwargs)
         self.pin = pin
-        self.device = OutputDevice(pin, active_high=active_high, initial_value=False)
-        self._on = False
+        self.device = device or OutputDevice(
+            pin, active_high=active_high, initial_value=initial_on
+        )
+        self._on = bool(initial_on)
 
         self.set_info_service(
             manufacturer="TeslaAPPS",
@@ -565,16 +586,19 @@ class GpioSwitch(Accessory):
         serv = self.add_preload_service("Switch")
         self.char_on = serv.configure_char(
             "On",
-            value=False,
+            value=self._on,
             setter_callback=self._set_on,
         )
         REGISTRY[pin] = self
         log.info(
-            "%s an GPIO %s (active_high=%s)",
+            "%s an GPIO %s (active_high=%s, initial_on=%s)",
             display_name,
             pin,
             active_high,
+            self._on,
         )
+        if self._on:
+            self._apply()
 
     def _apply(self) -> None:
         if self._on:
@@ -916,7 +940,14 @@ def get_bridge(driver, strips, fan_strips) -> Bridge:
         )
     )
     bridge.add_accessory(
-        GpioSwitch(driver, "Lüfter", PINS["luefter"], active_high=True)
+        GpioSwitch(
+            driver,
+            "Lüfter",
+            PINS["luefter"],
+            active_high=FAN_RELAY_ACTIVE_HIGH,
+            initial_on=True,
+            device=FAN_RELAY,
+        )
     )
     bridge.add_accessory(
         ColorLamp(
@@ -931,8 +962,9 @@ def get_bridge(driver, strips, fan_strips) -> Bridge:
 
 
 def main() -> None:
-    global SCENE_PLAYER, STRIPS, FAN_STRIPS, DRIVER
+    global SCENE_PLAYER, STRIPS, FAN_STRIPS, FAN_RELAY, DRIVER
 
+    FAN_RELAY = init_fan_relay()
     STRIPS = init_strips()
     FAN_STRIPS = init_fan_strip()
     start_web_server(WEB_PORT)
@@ -975,6 +1007,12 @@ def main() -> None:
         STRIPS.close()
         if FAN_STRIPS is not None:
             FAN_STRIPS.close()
+        if FAN_RELAY is not None:
+            try:
+                FAN_RELAY.off()
+                FAN_RELAY.close()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":

@@ -65,7 +65,7 @@ Geräte
 * Relais an GPIO 17 (active_high=False): grüner Sternenhimmel (On/Off Lampe)
 * WS2812 WLED Streifen mit 65 LEDs an GPIO 12 (PWM0): Rücksitzbank (Farblampe)
 * WS2812 WLED Streifen mit 24 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
-* Relais an GPIO 22 (active_high=True): RGB-Lüfter Motor (On/Off), unabhängig von den Lüfter-LEDs
+* Relais an GPIO 22 (active_high=True): RGB-Lüfter Motor (On/Off), unabhängig von den Lüfter-LEDs; beim Start des Daemons immer EIN
 * WS2812 mit 12 LEDs an GPIO 10 (SPI MOSI): RGB-Lüfter LEDs (Farblampe), unabhängig vom Lüftermotor
 * Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
 
@@ -83,6 +83,7 @@ Raspberry Pi "Jacky"
 * ngrok http 8080 --url https://placate-impale-nautical.ngrok-free.dev
 * Steuerung über ein Python Skript (Daemon):
   - Implementierung einer HomeKit Bridge mit den Geräten "Sternenhimmel" als On/Off-Lampe, WLED Streifen "Rücksitzbank" als Farblampe, WLED Streifen "Beifahrer" als Farblampe, "Lüfter" als On/Off-Schalter und "Lüfter-LEDs" als Farblampe
+  - Lüfter beim Start des Python-Skripts immer einschalten (danach per HomeKit/Web-API schaltbar)
   - Implementierung eines Web API Endpoint ebenfalls zur Steuerung der Geräte
   - Den Status der Geräte synchron halten, wenn per Web API gesteuert wurde
 * Dynamische Lichtszenen
