@@ -24,21 +24,8 @@ if [[ -f "${CONFIG}" ]] && grep -q '^dtparam=audio=on' "${CONFIG}"; then
   echo "PWM: dtparam=audio=off gesetzt."
   NEED_REBOOT=1
 fi
-if [[ -f "${CONFIG}" ]]; then
-  if grep -qE '^#?dtparam=spi=' "${CONFIG}"; then
-    if ! grep -q '^dtparam=spi=on' "${CONFIG}"; then
-      sed -i 's/^#\?dtparam=spi=.*/dtparam=spi=on/' "${CONFIG}"
-      echo "SPI: dtparam=spi=on gesetzt (Lüfter-LEDs GPIO 10)."
-      NEED_REBOOT=1
-    fi
-  else
-    printf '\n# TeslaAPPS Lüfter-LEDs (WS2812 SPI MOSI)\ndtparam=spi=on\n' >> "${CONFIG}"
-    echo "SPI: dtparam=spi=on ergänzt (Lüfter-LEDs GPIO 10)."
-    NEED_REBOOT=1
-  fi
-fi
 if [[ "${NEED_REBOOT}" -eq 1 ]]; then
-  echo "Ein Reboot ist nötig, damit PWM (GPIO 12/13) und SPI (GPIO 10) WS2812 ansteuern."
+  echo "Ein Reboot ist nötig, damit PWM (GPIO 12/13) WS2812 ansteuern."
 fi
 
 install -m 644 "${UNIT_SRC}" "${UNIT_DST}"

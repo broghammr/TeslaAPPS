@@ -3,7 +3,7 @@
  *
  *   Beifahrer      GPIO 13  – WS2812 Farblampe (PWM1), eigene Farbkachel
  *   Rücksitzbank   GPIO 12  – WS2812 Farblampe (PWM0), eigene Farbkachel
- *   Lüfter-LEDs    GPIO 10  – WS2812 Farblampe (SPI), eigene Farbkachel
+ *   Lüfter-LEDs    GPIO 21  – WS2812 Farblampe (PCM), eigene Farbkachel
  *   Sternenhimmel  GPIO 17  – On/Off-Schalter (active_high=False)
  *   Lüfter         GPIO 22  – On/Off-Schalter Motor (active_high=True)
  *
@@ -44,7 +44,7 @@ const DEVICES = [
   {
     id: "luefter_leds",
     name: "Lüfter-LEDs",
-    pin: 10,
+    pin: 21,
     kind: "color",
     subtitle: "Farbauswahl",
   },

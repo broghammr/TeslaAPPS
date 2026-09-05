@@ -66,12 +66,12 @@ Geräte
 * WS2812 WLED Streifen mit 65 LEDs an GPIO 12 (PWM0): Rücksitzbank (Farblampe)
 * WS2812 WLED Streifen mit 24 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
 * Relais an GPIO 22 (active_high=True): RGB-Lüfter Motor (On/Off), unabhängig von den Lüfter-LEDs; beim Start des Daemons immer EIN
-* WS2812 mit 12 LEDs an GPIO 10 (SPI MOSI): RGB-Lüfter LEDs (Farblampe), unabhängig vom Lüftermotor
+* WS2812 mit 12 LEDs an GPIO 21 (PCM DOUT, Header-Stift 40): RGB-Lüfter LEDs (Farblampe), unabhängig vom Lüftermotor
 * Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
 
-Hinweis GPIO 10 (SPI):
-* PWM0/PWM1 sind bereits durch Rücksitzbank/Beifahrer belegt; der dritte WS2812-Strip läuft deshalb über SPI
-* Auf dem Pi SPI aktivieren (`dtparam=spi=on` bzw. raspi-config → Interface Options → SPI), eigener DMA-Kanal (nicht DMA 10)
+Hinweis GPIO 21 (PCM):
+* PWM0/PWM1 sind bereits durch Rücksitzbank/Beifahrer belegt; der dritte WS2812-Strip läuft deshalb über PCM
+* GPIO 10 (SPI) ist für WS2812 auf dem Pi 4 ungeeignet; PCM nutzt dieselbe rpi_ws281x-DMA-Ansteuerung wie die PWM-Streifen, eigener DMA-Kanal (nicht DMA 10)
 
 Deployment
 * Skripte für den Raspberry Pi in Unterordner Raspi speichern

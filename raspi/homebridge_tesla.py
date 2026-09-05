@@ -7,7 +7,7 @@ Geräte (AGENTS.md):
   - Rücksitzbank   → GPIO 12  WS2812 Farblampe (PWM0)
   - Beifahrer      → GPIO 13  WS2812 Farblampe (PWM1)
   - Lüfter         → GPIO 22  On/Off-Schalter (active_high=True), beim Daemon-Start immer EIN
-  - Lüfter-LEDs    → GPIO 10  WS2812 Farblampe (SPI MOSI, 12 LEDs)
+  - Lüfter-LEDs    → GPIO 21  WS2812 Farblampe (PCM DOUT, rpi_ws281x wie PWM-Streifen)
 
 HomeKit: Bridge „Tesla Bridge“ mit Switches + Color-Lightbulbs.
 
@@ -71,7 +71,7 @@ PINS = {
     "ruecksitzbank": 12,
     "beifahrer": 13,
     "luefter": 22,
-    "luefter_leds": 10,
+    "luefter_leds": 21,
     "taster": 27,
 }
 
@@ -87,8 +87,8 @@ PWM = {
     "beifahrer": {"pin": PINS["beifahrer"], "channel": 1},
 }
 
-# SPI-Strip (GPIO 10) braucht einen anderen DMA-Kanal als DualPwmStrips (DMA 10).
-SPI_DMA = int(os.environ.get("WS2812_SPI_DMA", "5"))
+# GPIO 21 PCM: dritter WS2812-Pfad neben PWM0/PWM1, gleiche rpi_ws281x-DMA-Ansteuerung.
+PCM_DMA = int(os.environ.get("WS2812_PCM_DMA", "5"))
 SCENE_STRIP_PINS = (
     PINS["ruecksitzbank"],
     PINS["beifahrer"],
@@ -349,34 +349,21 @@ class DualPwmStrips:
             self._leds = None
 
 
-class NullStrips:
-    """Fallback, wenn PWM/SPI nicht initialisiert werden kann."""
-
-    def fill(self, channel: int, r: int, g: int, b: int) -> None:
-        log.warning("WS2812 nicht bereit (ch%s → %s,%s,%s)", channel, r, g, b)
-
-    def write_pixels(self, frames: dict[int, list[tuple[int, int, int]]]) -> None:
-        return
-
-    def close(self) -> None:
-        return
-
-
-class SpiStrip:
-    """WS2812 über SPI MOSI (GPIO 10), eigener DMA-Kanal neben DualPwmStrips."""
+class PcmStrip:
+    """WS2812 über GPIO 21 PCM mit rpi_ws281x (gleiche DMA-Ansteuerung wie PWM0/PWM1)."""
 
     def __init__(
         self,
         count: int,
-        pin: int = 10,
+        pin: int = 21,
         freq_hz: int = 800_000,
-        dma: int = SPI_DMA,
+        dma: int = PCM_DMA,
         brightness: int = 255,
     ) -> None:
         if ws is None:
             raise RuntimeError("rpi_ws281x ist nicht installiert")
-        if pin != 10:
-            raise ValueError("SPI-WS2812 unterstützt nur GPIO 10 (MOSI)")
+        if pin != 21:
+            raise ValueError("PCM-WS2812 unterstützt nur GPIO 21 (PCM_DOUT)")
 
         self._leds = ws.new_ws2811_t()
         self._lock = threading.Lock()
@@ -408,10 +395,16 @@ class SpiStrip:
             err = ws.ws2811_get_return_t_str(resp)
             ws.delete_ws2811_t(self._leds)
             self._leds = None
-            raise RuntimeError(f"ws2811_init (SPI) fehlgeschlagen: {resp} ({err})")
+            raise RuntimeError(f"ws2811_init (PCM) fehlgeschlagen: {resp} ({err})")
 
         atexit.register(self.close)
-        log.info("WS2812 SPI bereit: GPIO %s (%s LEDs, DMA %s)", pin, count, dma)
+        log.info(
+            "WS2812 PCM bereit: GPIO %s (%s LEDs, rpi_ws281x %s Hz, DMA %s)",
+            pin,
+            count,
+            freq_hz,
+            dma,
+        )
 
     def fill(self, channel: int, r: int, g: int, b: int) -> None:
         n = self.counts.get(channel, self.counts[0])
@@ -434,7 +427,7 @@ class SpiStrip:
             resp = ws.ws2811_render(self._leds)
             if resp != 0:
                 raise RuntimeError(
-                    f"ws2811_render (SPI): {resp} ({ws.ws2811_get_return_t_str(resp)})"
+                    f"ws2811_render (PCM): {resp} ({ws.ws2811_get_return_t_str(resp)})"
                 )
 
     def close(self) -> None:
@@ -448,10 +441,23 @@ class SpiStrip:
             ws.ws2811_fini(self._leds)
             ws.delete_ws2811_t(self._leds)
         except Exception:
-            log.exception("WS2812 SPI cleanup")
+            log.exception("WS2812 PCM cleanup")
         finally:
             self._closed = True
             self._leds = None
+
+
+class NullStrips:
+    """Fallback, wenn PWM/PCM nicht initialisiert werden kann."""
+
+    def fill(self, channel: int, r: int, g: int, b: int) -> None:
+        log.warning("WS2812 nicht bereit (ch%s → %s,%s,%s)", channel, r, g, b)
+
+    def write_pixels(self, frames: dict[int, list[tuple[int, int, int]]]) -> None:
+        return
+
+    def close(self) -> None:
+        return
 
 
 def scene_owns_hardware(pin: int | None = None) -> bool:
@@ -500,7 +506,10 @@ def write_scene_pixels(
         )
     fan_strips = FAN_STRIPS
     if fan_strips is not None:
-        fan_strips.write_pixels({0: fan})
+        try:
+            fan_strips.write_pixels({0: fan})
+        except Exception:
+            log.exception("Lüfter-LEDs Frame")
 
 
 def init_strips():
@@ -523,15 +532,15 @@ def init_strips():
 
 def init_fan_strip():
     try:
-        return SpiStrip(
+        return PcmStrip(
             count=LED_COUNT["luefter_leds"],
             pin=PINS["luefter_leds"],
-            dma=SPI_DMA,
+            dma=PCM_DMA,
         )
     except Exception as exc:
         log.error(
-            "WS2812 SPI-Init fehlgeschlagen (%s). "
-            "GPIO 10 braucht root und dtparam=spi=on (danach reboot). "
+            "WS2812 PCM-Init fehlgeschlagen (%s). "
+            "GPIO 21 (Header-Stift 40) braucht root; DMA-Kanal nicht 10. "
             "HomeKit läuft weiter, Lüfter-LEDs bleiben dunkel.",
             exc,
         )
