@@ -9,7 +9,8 @@
  *
  * API:
  *   POST {base}/gpio/set  pin=&state=0|1  [h,s,brightness,r,g,b]
- *   POST {base}/scene/start  Welcome-Szene (Chibi-Kachel)
+ *   POST {base}/scene/start  name=welcome|rainbow|stars|heartbeat|rider
+ *   POST {base}/scene/stop
  *   GET  {base}/status
  */
 
@@ -19,6 +20,7 @@ const API_BASE = NGROK_TUNNEL_BASE || "http://localhost:8080";
 const API_SET = `${API_BASE}/gpio/set`;
 const API_STATUS = `${API_BASE}/status`;
 const API_SCENE_START = `${API_BASE}/scene/start`;
+const API_SCENE_STOP = `${API_BASE}/scene/stop`;
 const API_HEADERS = { "ngrok-skip-browser-warning": "1" };
 const CHIBI_IMAGE = "../assets/chibi.jpg";
 
@@ -63,6 +65,34 @@ const DEVICES = [
     subtitle: "On/Off-Schalter",
   },
 ];
+
+const SCENES = [
+  {
+    id: "rainbow",
+    name: "Regenbogen",
+    subtitle: "Farbe wandert über die Streifen",
+  },
+  {
+    id: "stars",
+    name: "Sterne",
+    subtitle: "Grünes Funkeln",
+  },
+  {
+    id: "heartbeat",
+    name: "Herzschlag",
+    subtitle: "Rotes Pulsieren",
+  },
+  {
+    id: "rider",
+    name: "Knight Rider",
+    subtitle: "Roter Scanner",
+  },
+];
+
+/** scene id → Zeilen-Zustand */
+const sceneById = new Map();
+let sceneTileRoot = null;
+let scenePollTimer = 0;
 
 /** pin → Gerätestatus inkl. DOM */
 const stateByPin = new Map();
@@ -150,22 +180,41 @@ function createColorState() {
   return color;
 }
 
-async function postSceneStart() {
+async function postScene(url, fields) {
   const init = {
     method: "POST",
     headers: { ...API_HEADERS },
   };
+  if (fields) {
+    const body = new URLSearchParams();
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value != null) body.set(key, String(value));
+    });
+    init.headers = {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      ...API_HEADERS,
+    };
+    init.body = body.toString();
+  }
 
   try {
-    const res = await fetch(API_SCENE_START, { ...init, mode: "cors" });
+    const res = await fetch(url, { ...init, mode: "cors" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (err) {
     if (err instanceof TypeError) {
-      await fetch(API_SCENE_START, { ...init, mode: "no-cors" });
+      await fetch(url, { ...init, mode: "no-cors" });
       return;
     }
     throw err;
   }
+}
+
+async function postSceneStart(name) {
+  await postScene(API_SCENE_START, name ? { name } : null);
+}
+
+async function postSceneStop() {
+  await postScene(API_SCENE_STOP, null);
 }
 
 async function startWelcomeScene(tile) {
@@ -177,7 +226,8 @@ async function startWelcomeScene(tile) {
   announce("Startanimation wird gestartet.");
 
   try {
-    await postSceneStart();
+    await postSceneStart("welcome");
+    applySceneStatus({ running: true, name: "welcome" });
     tile.setAttribute("aria-label", "Chibi: Startanimation läuft");
     announce("Startanimation läuft.");
   } catch (err) {
@@ -192,6 +242,93 @@ async function startWelcomeScene(tile) {
     tile.classList.remove("tile--busy");
     tile.setAttribute("aria-label", "Chibi: Startanimation starten");
   }
+}
+
+function refreshScenesTileChrome() {
+  if (!sceneTileRoot) return;
+  const active = SCENES.find((spec) => sceneById.get(spec.id)?.on);
+  sceneTileRoot.classList.toggle("tile--lamp-on", Boolean(active));
+}
+
+function updateSceneTileUi(spec, entry) {
+  const row = entry.tile;
+  if (row) {
+    row.classList.toggle("scene-row--on", entry.on);
+    row.classList.toggle("scene-row--busy", entry.busy);
+    row.setAttribute("aria-pressed", entry.on ? "true" : "false");
+    row.setAttribute(
+      "aria-label",
+      `${spec.name}: ${spec.subtitle}. ${
+        entry.on ? "Läuft, tippen zum Stoppen" : "Tippen zum Starten"
+      }.`
+    );
+  }
+  refreshScenesTileChrome();
+}
+
+async function toggleScene(spec) {
+  const entry = sceneById.get(spec.id);
+  if (!entry || entry.busy) return;
+
+  const next = !entry.on;
+  entry.busy = true;
+  updateSceneTileUi(spec, entry);
+  try {
+    if (next) {
+      await postSceneStart(spec.id);
+      for (const other of SCENES) {
+        const otherEntry = sceneById.get(other.id);
+        if (!otherEntry) continue;
+        otherEntry.on = other.id === spec.id;
+        updateSceneTileUi(other, otherEntry);
+      }
+      announce(`${spec.name} läuft.`);
+      startScenePoll();
+    } else {
+      await postSceneStop();
+      entry.on = false;
+      announce(`${spec.name} gestoppt.`);
+      stopScenePoll();
+    }
+  } catch (err) {
+    console.error("Scene set failed:", err);
+    announce(`${spec.name}: Raspberry Pi erreichbar?`);
+  } finally {
+    entry.busy = false;
+    updateSceneTileUi(spec, entry);
+  }
+}
+
+function createScenesTile() {
+  const el = document.createElement("div");
+  el.className = "tile tile--lamp tile--scenes";
+  el.setAttribute("role", "listitem");
+  el.dataset.kind = "scenes";
+  sceneTileRoot = el;
+
+  el.innerHTML = `
+    <div class="scene-rows" role="group" aria-label="Lichtszenen"></div>
+  `;
+
+  const list = el.querySelector(".scene-rows");
+  for (const spec of SCENES) {
+    const entry = { on: false, busy: false, tile: null };
+    sceneById.set(spec.id, entry);
+
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "scene-row";
+    row.dataset.sceneId = spec.id;
+    row.setAttribute("aria-pressed", "false");
+    row.textContent = spec.name;
+    row.addEventListener("click", () => {
+      toggleScene(spec);
+    });
+    entry.tile = row;
+    list.appendChild(row);
+    updateSceneTileUi(spec, entry);
+  }
+  return el;
 }
 
 function createChibiTile() {
@@ -274,6 +411,39 @@ function applyStatus(data) {
     }
     updateTileUi(device, entry);
   }
+
+  applySceneStatus(data.scene);
+}
+
+function applySceneStatus(scene) {
+  const runningName =
+    scene && scene.running && scene.name && scene.name !== "welcome"
+      ? scene.name
+      : null;
+  for (const spec of SCENES) {
+    const entry = sceneById.get(spec.id);
+    if (!entry) continue;
+    entry.on = runningName === spec.id;
+    updateSceneTileUi(spec, entry);
+  }
+  if (scene && scene.running) {
+    startScenePoll();
+  } else {
+    stopScenePoll();
+  }
+}
+
+function startScenePoll() {
+  if (scenePollTimer) return;
+  scenePollTimer = window.setInterval(() => {
+    syncFromBridge();
+  }, 2000);
+}
+
+function stopScenePoll() {
+  if (!scenePollTimer) return;
+  window.clearInterval(scenePollTimer);
+  scenePollTimer = 0;
 }
 
 function switchStatusLabel(entry) {
@@ -356,6 +526,7 @@ async function toggleDevice(device) {
       await postGpio({ pin: device.pin, state: next ? "1" : "0" });
     }
     entry.on = next;
+    applySceneStatus({ running: false, name: null });
     announce(next ? `${device.name} ist an.` : `${device.name} ist aus.`);
   } catch (err) {
     console.error("GPIO set failed:", err);
@@ -395,6 +566,7 @@ async function sendColor(device, { turnOn = true } = {}) {
         b: p.b,
       });
       entry.on = nextOn;
+      applySceneStatus({ running: false, name: null });
       announce(
         `${device.name}: RGB ${p.r}, ${p.g}, ${p.b}, ${p.brightness} Prozent.`
       );
@@ -691,6 +863,7 @@ function renderPage() {
         : createSwitchTile(device)
     );
   }
+  fragment.appendChild(createScenesTile());
   fragment.appendChild(createChibiTile());
   grid.appendChild(fragment);
 }

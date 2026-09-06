@@ -14,13 +14,15 @@ HomeKit: Bridge „Tesla Bridge“ mit Switches + Color-Lightbulbs.
 Web-API:
   POST /gpio/set   pin=XX&state=0|1
                    optional: r,g,b (0–255) und/oder h,s,brightness
-  POST /scene/start  Welcome-Szene (30 s) wie Taster
+  POST /scene/start  Szene starten (name=welcome|rainbow|stars|heartbeat|rider)
+  POST /scene/stop   laufende Szene stoppen und Streifen wiederherstellen
   GET  /status     JSON mit aktuellem Zustand
   GET  /temp       CPU-Temperatur in °C
   GET  /health     OK
 
 Szenen:
   Welcome 30s (Tesla Sommerupdate 2026) beim Daemon-Start und Taster GPIO 27.
+  Loop: Regenbogen, Sterne, Herzschlag, Knight Rider über die Light-Seite.
   Nutzt Rücksitzbank, Beifahrer und Lüfter-LEDs (nicht Sternenhimmel/Lüftermotor).
   Startanimation läuft ohne Netz; HomeKit erst nach LAN-IP.
   HAP lauscht auf 0.0.0.0; mDNS folgt später LAN-IP-Wechseln.
@@ -48,7 +50,7 @@ from pyhap.accessory_driver import AccessoryDriver
 from pyhap.const import CATEGORY_LIGHTBULB, CATEGORY_SWITCH
 from zeroconf import InterfaceChoice
 
-from light_scenes import TESLA_ICE, ScenePlayer
+from light_scenes import SCENE_SPECS, TESLA_ICE, ScenePlayer
 
 try:
     import _rpi_ws281x as ws
@@ -811,7 +813,12 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
             payload["scene"] = (
                 SCENE_PLAYER.as_status()
                 if SCENE_PLAYER is not None
-                else {"name": None, "running": False, "duration": 30.0}
+                else {
+                    "name": None,
+                    "running": False,
+                    "duration": 30.0,
+                    "loop": False,
+                }
             )
             driver = DRIVER
             payload["homekit"] = {
@@ -831,27 +838,58 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
             return
         self.send_error(404)
 
+    def _parse_post_params(self) -> dict:
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        if length > 0:
+            body = self.rfile.read(length).decode("utf-8")
+            ctype = self.headers.get("Content-Type", "")
+            if "application/json" in ctype:
+                raw = json.loads(body or "{}")
+                for key, value in raw.items():
+                    params[key] = [str(value)]
+            else:
+                params.update(parse_qs(body))
+        return params
+
     def do_POST(self):
         path = urlparse(self.path).path
         if path == "/scene/start":
             if SCENE_PLAYER is None:
                 self._send(503, "Error: Szene nicht bereit\n")
                 return
-            SCENE_PLAYER.request_start("api")
-            self._send(200, {"ok": True, "scene": "welcome", "duration": 30.0})
+            params = self._parse_post_params()
+            raw_name = _first(params, "name") or "welcome"
+            try:
+                started = SCENE_PLAYER.request_start("api", name=raw_name)
+            except ValueError as exc:
+                self._send(400, f"Error: {exc}\n")
+                return
+            spec = SCENE_SPECS[started]
+            self._send(
+                200,
+                {
+                    "ok": True,
+                    "scene": started,
+                    "duration": spec["duration"],
+                    "loop": spec["loop"],
+                },
+            )
+            return
+        if path == "/scene/stop":
+            if SCENE_PLAYER is None:
+                self._send(503, "Error: Szene nicht bereit\n")
+                return
+            self._parse_post_params()
+            SCENE_PLAYER.stop(restore=True)
+            self._send(200, {"ok": True, "scene": None})
             return
         if path != "/gpio/set":
             self.send_error(404, "Not Found")
             return
         try:
-            length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(length).decode("utf-8")
-            ctype = self.headers.get("Content-Type", "")
-            if "application/json" in ctype:
-                raw = json.loads(body or "{}")
-                params = {k: [str(v)] for k, v in raw.items()}
-            else:
-                params = parse_qs(body)
+            params = self._parse_post_params()
 
             pin = _first_int(params, "pin")
             if pin is None:
@@ -877,6 +915,9 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
             if on is None and rgb is None and hue is None and sat is None and bri is None:
                 raise ValueError("state oder Farbe (r,g,b / h,s / brightness) erforderlich")
 
+            if SCENE_PLAYER is not None and SCENE_PLAYER.is_running:
+                SCENE_PLAYER.stop(restore=False)
+
             if isinstance(acc, ColorLamp):
                 acc.apply_from_api(on=on, hue=hue, sat=sat, bri=bri, rgb=rgb)
             else:
@@ -896,7 +937,7 @@ def start_web_server(port: int = WEB_PORT) -> HTTPServer:
     thread = threading.Thread(target=server.serve_forever, daemon=True, name="web-api")
     thread.start()
     log.info(
-        "Web-API auf Port %s  →  POST /gpio/set  POST /scene/start  GET /status",
+        "Web-API auf Port %s  →  POST /gpio/set  POST /scene/start  POST /scene/stop  GET /status",
         port,
     )
     return server
@@ -904,7 +945,7 @@ def start_web_server(port: int = WEB_PORT) -> HTTPServer:
 
 def attach_scene_button(player: ScenePlayer) -> Button:
     button = Button(PINS["taster"], pull_up=True, bounce_time=0.15)
-    button.when_pressed = lambda: player.request_start("taster")
+    button.when_pressed = lambda: player.request_start("taster", name="welcome")
     log.info("Taster GPIO %s → Startanimation (kein HomeKit-Gerät)", PINS["taster"])
     return button
 

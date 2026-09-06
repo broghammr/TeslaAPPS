@@ -36,7 +36,7 @@ Themenseite "Light" (lt)
 * Eine Kachel "Lüfter" als On/Off-Schalter für den Lüftermotor (Relais); Ansteuerung siehe Projekt 02 Raspi
 * Eine Kachel "Lüfter-LEDs" als Farbauswahl (12× WS2812), unabhängig vom Lüftermotor; Ansteuerung siehe Projekt 02 Raspi
 * Zusätzlich zum Mainhub als letzte Kachel auch die Themenkachel "Chibi" (cb) anfügen
-* Reihenfolge Beifahrer, Rücksitzbank, Lüfter-LEDs, Sternenhimmel, Lüfter, Chibi
+* Reihenfolge Beifahrer, Rücksitzbank, Lüfter-LEDs, Sternenhimmel, Lüfter, Szenen, Chibi
 
 Themenkachel "Monitor" (mn)
 * Nur eine Kachel mit Inhalt, keine Unterseite
@@ -88,5 +88,6 @@ Raspberry Pi "Jacky"
   - Den Status der Geräte synchron halten, wenn per Web API gesteuert wurde
 * Dynamische Lichtszenen
   - Startanimationen, welche die Tesla Startanimation aus dem Sommerupdate 2026 unterstützt, Dauer 30s. WLED Streifen Rücksitzbank, Beifahrer und Lüfter-LEDs dazu verwenden, nicht Sternenhimmel und nicht den Lüftermotor. Ausführung beim Start des Python Skripts (Daemon) und wenn der Taster an GPIO 27 gedrückt wurde — auch ohne Netz. HomeKit startet erst, sobald eine LAN-IP da ist.
+  - Zusätzliche Loopszenen (Light-Seite, bis Stop oder andere Szene): Regenbogen, grüne funkelnde Sterne, roter Herzschlag, Knight Rider. Gleiche Streifen. API: POST /scene/start name=rainbow|stars|heartbeat|rider, POST /scene/stop.
 
 
