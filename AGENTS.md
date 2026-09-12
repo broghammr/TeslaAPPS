@@ -68,6 +68,7 @@ Geräte
 * Relais an GPIO 22 (active_high=True): RGB-Lüfter Motor (On/Off), unabhängig von den Lüfter-LEDs; beim Start des Daemons immer EIN
 * WS2812 mit 12 LEDs an GPIO 21 (PCM DOUT, Header-Stift 40): RGB-Lüfter LEDs (Farblampe), unabhängig vom Lüftermotor
 * Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
+* Fotowiderstand LDR 5528 GL5528, an GPIO tbd.
 
 Hinweis GPIO 21 (PCM):
 * PWM0/PWM1 sind bereits durch Rücksitzbank/Beifahrer belegt; der dritte WS2812-Strip läuft deshalb über PCM
