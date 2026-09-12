@@ -508,15 +508,6 @@ function updateTileUi(device, entry) {
     }
   }
 
-  const switchState = tile.querySelector(".switch-row__state");
-  if (switchState) {
-    switchState.textContent = entry.busy
-      ? "Bitte warten…"
-      : entry.on
-        ? "eingeschaltet"
-        : "ausgeschaltet";
-  }
-
   const status = tile.querySelector(".tile__status");
   if (status) {
     status.textContent =
@@ -636,6 +627,14 @@ function createSwitchesTile(devices) {
       </span>
     </div>
     <div class="switch-rows" role="group" aria-label="Ein- und Ausschalter"></div>
+    <img
+      class="switches__highlight"
+      src="../assets/cybertruck.png"
+      alt=""
+      aria-hidden="true"
+      loading="lazy"
+      decoding="async"
+    />
   `;
 
   const list = el.querySelector(".switch-rows");
@@ -661,7 +660,6 @@ function createSwitchesTile(devices) {
         decoding="async"
       />
       <span class="switch-row__name">${escapeHtml(device.name)}</span>
-      <span class="switch-row__state">${escapeHtml(device.subtitle)}</span>
     `;
     row.addEventListener("click", () => {
       toggleDevice(device);

@@ -112,6 +112,7 @@ a {
 
 /* —— Page title only (no header bar) —— */
 .page-title {
+  position: relative;
   margin: 0 0 clamp(1.25rem, 3vw, 2rem);
   /* Platz für den Mond oben rechts */
   padding-right: 3.5rem;
@@ -262,6 +263,21 @@ a {
   color: var(--accent);
 }
 
+.tile--has-highlight {
+  overflow: visible;
+}
+
+.tile__highlight {
+  position: absolute;
+  top: -4.25rem;
+  right: 1rem;
+  z-index: 2;
+  width: 5rem;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
 .tile--soon {
   opacity: 0.95;
 }
@@ -339,6 +355,39 @@ a {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: rgba(17, 17, 17, 0.92);
+}
+
+.photo-lightbox__image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 6rem);
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.photo-lightbox__caption {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  max-width: calc(100% - 6rem);
+  margin: 0;
+  transform: translateX(-50%);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
 /* —— Light: Beleuchtungs-Kacheln —— */
 .tile--lamp .tile__status {
   display: none;
@@ -366,6 +415,19 @@ a {
   gap: 0.5rem;
   width: 100%;
   margin-top: 0.25rem;
+  position: relative;
+  z-index: 1;
+}
+
+.switches__highlight {
+  position: absolute;
+  right: 0.5rem;
+  bottom: -1.5rem;
+  z-index: 2;
+  width: clamp(8rem, 42%, 13rem);
+  height: auto;
+  pointer-events: none;
+  user-select: none;
 }
 
 .switch-row {
@@ -401,6 +463,10 @@ a {
   height: 1.5rem;
   flex: 0 0 auto;
   object-fit: contain;
+  filter: invert(44%);
+}
+
+.switch-row--on .switch-row__icon {
   filter: invert(33%) sepia(98%) saturate(2476%) hue-rotate(202deg)
     brightness(98%) contrast(101%);
 }
@@ -410,16 +476,6 @@ a {
   min-width: 0;
   font-size: 1.1rem;
   font-weight: 700;
-}
-
-.switch-row__state {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-.switch-row--on .switch-row__state {
-  color: var(--accent);
 }
 
 .tile--lamp.tile--lamp-on {
@@ -652,6 +708,10 @@ a {
   margin-right: 0.75rem;
   flex: 0 0 auto;
   object-fit: contain;
+  filter: invert(44%);
+}
+
+.scene-row--on .scene-row__icon {
   filter: invert(33%) sepia(98%) saturate(2476%) hue-rotate(202deg)
     brightness(98%) contrast(101%);
 }
@@ -720,6 +780,20 @@ a {
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;
+}
+
+.page-title__highlight {
+  position: absolute;
+  right: 0.25rem;
+  bottom: -0.5rem;
+  width: 5.5rem;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+.page-title--grinch {
+  padding-right: 6rem;
 }
 
 /* —— Large screens (Tesla landscape) —— */

@@ -32,6 +32,7 @@ const TOPICS = [
     subtitle: "Beleuchtung im Auto steuern",
     icon: ICONS.light,
     href: "topics/light.html",
+    highlightImage: "assets/optimus_seat.png",
     ready: true,
     status: "Öffnen",
   },
@@ -64,7 +65,8 @@ function createTile(topic) {
     (!topic.ready && !isImageTile ? " tile--soon" : "") +
     (isImageTile ? " tile--image" : "") +
     (isMonitor ? " tile--monitor" : "") +
-    (isChibi ? " tile--chibi" : "");
+    (isChibi ? " tile--chibi" : "") +
+    (topic.highlightImage ? " tile--has-highlight" : "");
   el.setAttribute("role", "listitem");
   el.dataset.topicId = topic.id;
 
@@ -119,6 +121,18 @@ function createTile(topic) {
       </span>
       <span class="tile__status">${escapeHtml(statusText)}</span>
     `;
+    if (topic.highlightImage) {
+      el.insertAdjacentHTML(
+        "beforeend",
+        `<img
+          class="tile__highlight"
+          src="${escapeHtml(topic.highlightImage)}"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />`
+      );
+    }
   }
 
   if (isMonitor) {

@@ -98,6 +98,8 @@ function createPhotoTile(item) {
   const el = document.createElement("div");
   el.className = "tile tile--photo";
   el.setAttribute("role", "listitem");
+  el.setAttribute("tabindex", "0");
+  el.setAttribute("aria-label", `${item.caption} vergrößert anzeigen`);
   el.dataset.topicId = item.id;
 
   el.innerHTML = `
@@ -111,7 +113,51 @@ function createPhotoTile(item) {
     <p class="tile__photo-footer">${escapeHtml(item.caption)}</p>
   `;
 
+  const openFullscreen = () => openPhotoLightbox(item, el);
+  el.addEventListener("click", openFullscreen);
+  el.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openFullscreen();
+    }
+  });
+
   return el;
+}
+
+function openPhotoLightbox(item, trigger) {
+  const existing = document.querySelector(".photo-lightbox");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.className = "photo-lightbox";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", item.caption);
+  overlay.innerHTML = `
+    <img
+      class="photo-lightbox__image"
+      src="${escapeHtml(item.image)}"
+      alt="${escapeHtml(item.imageAlt || item.caption || "")}"
+    />
+    <p class="photo-lightbox__caption">${escapeHtml(item.caption)}</p>
+  `;
+
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", onKeyDown);
+    trigger.focus();
+  };
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") close();
+  };
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector(".photo-lightbox__image").addEventListener("click", close);
+  document.addEventListener("keydown", onKeyDown);
+  document.body.appendChild(overlay);
 }
 
 function renderRoadtrips() {
