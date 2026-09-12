@@ -341,7 +341,85 @@ a {
 
 /* —— Light: Beleuchtungs-Kacheln —— */
 .tile--lamp .tile__status {
+  display: none;
   color: var(--text-muted);
+}
+
+.tile--switches {
+  gap: 0.75rem;
+}
+
+.switches__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.switches__header .tile__icon {
+  margin-bottom: 0;
+}
+
+.switch-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--touch-min);
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tile);
+}
+
+.switch-row:hover,
+.switch-row:focus-visible {
+  border-color: var(--accent);
+}
+
+.switch-row:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.switch-row--on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.switch-row__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: invert(33%) sepia(98%) saturate(2476%) hue-rotate(202deg)
+    brightness(98%) contrast(101%);
+}
+
+.switch-row__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.switch-row__state {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.switch-row--on .switch-row__state {
+  color: var(--accent);
 }
 
 .tile--lamp.tile--lamp-on {
@@ -374,13 +452,14 @@ a {
 /* —— Light: Farbkreis + Helligkeit (eine Kachel pro Streifen) —— */
 .tile--color {
   min-height: auto;
+  padding: 1rem;
   cursor: default;
 }
 
 .tile__power {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.75rem;
   width: 100%;
   min-height: var(--touch-min);
   padding: 0;
@@ -419,21 +498,21 @@ a {
 }
 
 .tile__body--color {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .color-picker {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 1rem;
+  gap: 0.65rem;
   width: 100%;
   margin-top: 0.35rem;
 }
 
 .color-picker__wheel {
   display: block;
-  width: min(100%, 220px);
+  width: min(100%, 180px);
   height: auto;
   aspect-ratio: 1;
   margin-inline: auto;
@@ -447,14 +526,21 @@ a {
 .color-picker__brightness {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  font-size: 1.05rem;
+  gap: 0.35rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text);
 }
 
 .color-picker__brightness-label {
   display: block;
+}
+
+.color-picker__rgb {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .color-picker__slider {
@@ -558,6 +644,22 @@ a {
   border: 2px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+
+.scene-row__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-right: 0.75rem;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: invert(33%) sepia(98%) saturate(2476%) hue-rotate(202deg)
+    brightness(98%) contrast(101%);
+}
+
+.scene-row__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .scene-row:hover,

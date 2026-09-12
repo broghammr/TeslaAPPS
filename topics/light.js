@@ -25,6 +25,7 @@ const API_HEADERS = { "ngrok-skip-browser-warning": "1" };
 const CHIBI_IMAGE = "../assets/chibi.jpg";
 
 const ICON = "../assets/light.svg";
+const SWITCH_ICON = "../assets/switch.svg";
 const WHEEL_SIZE = 200;
 const COLOR_DEBOUNCE_MS = 120;
 
@@ -71,21 +72,25 @@ const SCENES = [
     id: "rainbow",
     name: "Regenbogen",
     subtitle: "Farbe wandert über die Streifen",
+    icon: "rainbow.svg",
   },
   {
     id: "stars",
     name: "Sterne",
     subtitle: "Grünes Funkeln",
+    icon: "stars.svg",
   },
   {
     id: "heartbeat",
     name: "Herzschlag",
     subtitle: "Rotes Pulsieren",
+    icon: "heart.svg",
   },
   {
     id: "rider",
     name: "Knight Rider",
     subtitle: "Roter Scanner",
+    icon: "car.svg",
   },
 ];
 
@@ -320,7 +325,17 @@ function createScenesTile() {
     row.className = "scene-row";
     row.dataset.sceneId = spec.id;
     row.setAttribute("aria-pressed", "false");
-    row.textContent = spec.name;
+    row.innerHTML = `
+      <img
+        class="scene-row__icon"
+        src="../assets/${escapeHtml(spec.icon)}"
+        alt=""
+        width="32"
+        height="32"
+        decoding="async"
+      />
+      <span class="scene-row__name">${escapeHtml(spec.name)}</span>
+    `;
     row.addEventListener("click", () => {
       toggleScene(spec);
     });
@@ -468,6 +483,7 @@ function updateTileUi(device, entry) {
   if (!tile) return;
 
   tile.classList.toggle("tile--lamp-on", entry.on);
+  tile.classList.toggle("switch-row--on", entry.on);
   tile.classList.toggle("tile--busy", entry.busy);
 
   const power = tile.querySelector("[data-role=power]");
@@ -490,6 +506,15 @@ function updateTileUi(device, entry) {
           ? `${device.subtitle} · eingeschaltet`
           : `${device.subtitle} · ausgeschaltet`;
     }
+  }
+
+  const switchState = tile.querySelector(".switch-row__state");
+  if (switchState) {
+    switchState.textContent = entry.busy
+      ? "Bitte warten…"
+      : entry.on
+        ? "eingeschaltet"
+        : "ausgeschaltet";
   }
 
   const status = tile.querySelector(".tile__status");
@@ -581,12 +606,12 @@ async function sendColor(device, { turnOn = true } = {}) {
   }
 }
 
-function deviceIconHtml() {
+function deviceIconHtml(icon = ICON) {
   return `
     <span class="tile__icon" aria-hidden="true">
       <img
         class="tile__pictogram"
-        src="${escapeHtml(ICON)}"
+        src="${escapeHtml(icon)}"
         alt=""
         width="36"
         height="36"
@@ -596,35 +621,56 @@ function deviceIconHtml() {
   `;
 }
 
-function createSwitchTile(device) {
-  const entry = { on: false, busy: false, tile: null };
-  stateByPin.set(device.pin, entry);
-
-  const el = document.createElement("button");
-  el.type = "button";
-  el.className = "tile tile--lamp";
+function createSwitchesTile(devices) {
+  const el = document.createElement("div");
+  el.className = "tile tile--lamp tile--switches";
   el.setAttribute("role", "listitem");
-  el.dataset.deviceId = device.id;
-  el.dataset.pin = String(device.pin);
-  el.dataset.kind = "switch";
-  el.dataset.role = "power";
-  el.setAttribute("aria-pressed", "false");
+  el.dataset.kind = "switches";
 
   el.innerHTML = `
-    ${deviceIconHtml()}
-    <span class="tile__body">
-      <span class="tile__title">${escapeHtml(device.name)}</span>
-      <span class="tile__subtitle">${escapeHtml(device.subtitle)} · ausgeschaltet</span>
-    </span>
-    <span class="tile__status">Aus – tippen zum Einschalten</span>
+    <div class="switches__header">
+      ${deviceIconHtml(SWITCH_ICON)}
+      <span class="tile__body">
+        <span class="tile__title">Schalter</span>
+        <span class="tile__subtitle">Beleuchtung und Lüfter</span>
+      </span>
+    </div>
+    <div class="switch-rows" role="group" aria-label="Ein- und Ausschalter"></div>
   `;
 
-  el.addEventListener("click", () => {
-    toggleDevice(device);
-  });
+  const list = el.querySelector(".switch-rows");
+  for (const device of devices) {
+    const entry = { on: false, busy: false, tile: null };
+    stateByPin.set(device.pin, entry);
 
-  entry.tile = el;
-  updateTileUi(device, entry);
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "switch-row";
+    row.dataset.deviceId = device.id;
+    row.dataset.pin = String(device.pin);
+    row.dataset.kind = "switch";
+    row.dataset.role = "power";
+    row.setAttribute("aria-pressed", "false");
+    row.innerHTML = `
+      <img
+        class="switch-row__icon"
+        src="${escapeHtml(SWITCH_ICON)}"
+        alt=""
+        width="28"
+        height="28"
+        decoding="async"
+      />
+      <span class="switch-row__name">${escapeHtml(device.name)}</span>
+      <span class="switch-row__state">${escapeHtml(device.subtitle)}</span>
+    `;
+    row.addEventListener("click", () => {
+      toggleDevice(device);
+    });
+    entry.tile = row;
+    list.appendChild(row);
+    updateTileUi(device, entry);
+  }
+
   return el;
 }
 
@@ -750,7 +796,9 @@ function createColorTile(device) {
         aria-label="${escapeHtml(device.name)}: Farbkreis"
       ></canvas>
       <label class="color-picker__brightness">
-        <span class="color-picker__brightness-label">Helligkeit</span>
+        <span class="color-picker__brightness-label">
+          Helligkeit <span class="color-picker__rgb" aria-live="polite"></span>
+        </span>
         <input
           class="color-picker__slider"
           type="range"
@@ -773,6 +821,8 @@ function createColorTile(device) {
     drawColorWheel(canvas, color);
     const pct = Math.round(color.v * 100);
     if (Number(slider.value) !== pct) slider.value = String(pct);
+    const rgb = el.querySelector(".color-picker__rgb");
+    if (rgb) rgb.textContent = `(RGB ${color.r}, ${color.g}, ${color.b})`;
     el.dataset.colorR = String(color.r);
     el.dataset.colorG = String(color.g);
     el.dataset.colorB = String(color.b);
@@ -856,13 +906,17 @@ function renderPage() {
   if (!grid) return;
 
   const fragment = document.createDocumentFragment();
+  const switchDevices = [];
   for (const device of DEVICES) {
+    if (device.kind === "switch") {
+      switchDevices.push(device);
+      continue;
+    }
     fragment.appendChild(
-      device.kind === "color"
-        ? createColorTile(device)
-        : createSwitchTile(device)
+      createColorTile(device)
     );
   }
+  fragment.appendChild(createSwitchesTile(switchDevices));
   fragment.appendChild(createScenesTile());
   fragment.appendChild(createChibiTile());
   grid.appendChild(fragment);
