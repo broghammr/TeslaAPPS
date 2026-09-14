@@ -262,6 +262,28 @@ function announce(message) {
   });
 }
 
+function setupDarkMode() {
+  const themeMeta = document.getElementById("theme-color-meta");
+  if (!window.matchMedia) return;
+
+  const query = window.matchMedia("(prefers-color-scheme: dark)");
+
+  const apply = (isDark) => {
+    document.body.classList.toggle("night-mode", isDark);
+    if (themeMeta) {
+      themeMeta.setAttribute("content", isDark ? "#111111" : "#f5f5f5");
+    }
+  };
+
+  apply(query.matches);
+
+  if (typeof query.addEventListener === "function") {
+    query.addEventListener("change", (event) => apply(event.matches));
+  } else if (typeof query.addListener === "function") {
+    query.addListener((event) => apply(event.matches));
+  }
+}
+
 function renderHub() {
   const grid = document.getElementById("tile-grid");
   if (!grid) return;
@@ -277,37 +299,7 @@ function renderHub() {
  * Tesla-Nachtmodus: Browser meldet prefers-color-scheme: dark.
  * Dann erscheint oben rechts der Mond-Indikator.
  */
-function setupNightModeIndicator() {
-  const indicator = document.getElementById("night-indicator");
-  const themeMeta = document.getElementById("theme-color-meta");
-  if (!indicator || !window.matchMedia) return;
-
-  const query = window.matchMedia("(prefers-color-scheme: dark)");
-
-  const apply = (isDark) => {
-    indicator.hidden = !isDark;
-    indicator.classList.toggle("is-visible", isDark);
-    indicator.setAttribute(
-      "aria-label",
-      isDark ? "Nachtmodus aktiv" : "Nachtmodus inaktiv"
-    );
-    if (themeMeta) {
-      // Theme-Color für Browser-Chrome (hell bleibt lesbar laut Spec)
-      themeMeta.setAttribute("content", isDark ? "#1a1a1a" : "#f5f5f5");
-    }
-  };
-
-  apply(query.matches);
-
-  // Live-Wechsel, falls das Display im Auto umschaltet
-  if (typeof query.addEventListener === "function") {
-    query.addEventListener("change", (e) => apply(e.matches));
-  } else if (typeof query.addListener === "function") {
-    query.addListener((e) => apply(e.matches));
-  }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
-  setupNightModeIndicator();
+  setupDarkMode();
   renderHub();
 });

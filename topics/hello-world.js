@@ -171,20 +171,14 @@ function renderRoadtrips() {
   grid.appendChild(fragment);
 }
 
-function setupNightModeIndicator() {
-  const indicator = document.getElementById("night-indicator");
+function setupDarkMode() {
   const themeMeta = document.getElementById("theme-color-meta");
-  if (!indicator || !window.matchMedia) return;
+  if (!window.matchMedia) return;
 
   const query = window.matchMedia("(prefers-color-scheme: dark)");
 
   const apply = (isDark) => {
-    indicator.hidden = !isDark;
-    indicator.classList.toggle("is-visible", isDark);
-    indicator.setAttribute(
-      "aria-label",
-      isDark ? "Nachtmodus aktiv" : "Nachtmodus inaktiv"
-    );
+    document.body.classList.toggle("night-mode", isDark);
     if (themeMeta) {
       themeMeta.setAttribute("content", isDark ? "#1a1a1a" : "#f5f5f5");
     }
@@ -200,6 +194,6 @@ function setupNightModeIndicator() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setupNightModeIndicator();
+  setupDarkMode();
   renderRoadtrips();
 });
