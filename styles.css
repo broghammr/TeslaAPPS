@@ -162,29 +162,12 @@ a {
   overflow: hidden;
 }
 
-.tile::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 6px;
-  height: 100%;
-  background: var(--accent);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
 .tile:hover,
 .tile:focus-visible {
   background: var(--bg-tile-hover);
   border-color: var(--accent);
   box-shadow: var(--shadow-hover);
   outline: none;
-}
-
-.tile:hover::before,
-.tile:focus-visible::before {
-  opacity: 1;
 }
 
 .tile:active {
@@ -295,6 +278,8 @@ a {
 .tile--image:hover,
 .tile--image:focus-visible {
   background: var(--bg-tile);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
 }
 
 .tile--chibi:hover,
@@ -828,7 +813,7 @@ a {
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .tile,
-  .tile::before {
+  .tile__image {
     transition: none;
   }
 
