@@ -1,11 +1,13 @@
 /**
  * Tesla Apps – Thema "Light"
  *
- *   Beifahrer      GPIO 13  – WS2812 Farblampe (PWM1), eigene Farbkachel
- *   Rücksitzbank   GPIO 12  – WS2812 Farblampe (PWM0), eigene Farbkachel
- *   Lüfter-LEDs    GPIO 21  – WS2812 Farblampe (PCM), eigene Farbkachel
+ *   Beifahrer      GPIO 13  – WS2812 Farblampe (PWM1)
+ *   Rücksitzbank   GPIO 12  – WS2812 Farblampe (PWM0)
+ *   Lüfter-LEDs    GPIO 21  – WS2812 Farblampe (PCM)
+ *   Eine Farbkachel setzt alle drei Streifen (API weiterhin pro Pin).
  *   Sternenhimmel  GPIO 17  – On/Off-Schalter (active_high=False)
  *   Lüfter         GPIO 22  – On/Off-Schalter Motor (active_high=True)
+ *   Musik-Sync     pin 100  – virtueller On/Off-Schalter (kein GPIO)
  *
  * API:
  *   POST {base}/gpio/set  pin=&state=0|1  [h,s,brightness,r,g,b]
@@ -26,6 +28,9 @@ const CHIBI_IMAGE = "../assets/chibi.jpg";
 
 const ICON = "../assets/light.svg";
 const SWITCH_ICON = "../assets/switch.svg";
+const SKY_ICON = "../assets/sky.svg";
+const FAN_ICON = "../assets/fan.svg";
+const MUSIC_ICON = "../assets/music.svg";
 const WHEEL_SIZE = 200;
 const COLOR_DEBOUNCE_MS = 120;
 
@@ -57,6 +62,7 @@ const DEVICES = [
     pin: 17,
     kind: "switch",
     subtitle: "On/Off-Schalter",
+    icon: SKY_ICON,
   },
   {
     id: "luefter",
@@ -64,8 +70,26 @@ const DEVICES = [
     pin: 22,
     kind: "switch",
     subtitle: "On/Off-Schalter",
+    icon: FAN_ICON,
+  },
+  {
+    id: "music_sync",
+    name: "Musik-Sync",
+    pin: 100,
+    kind: "switch",
+    virtual: true,
+    subtitle: "On/Off-Schalter",
+    icon: MUSIC_ICON,
   },
 ];
+
+const COLOR_LAMPS = DEVICES.filter((device) => device.kind === "color");
+const COLOR_GROUP = {
+  id: "farblampen",
+  name: "Farbauswahl",
+  kind: "color",
+  subtitle: "Farbauswahl",
+};
 
 const SCENES = [
   {
@@ -101,6 +125,9 @@ let scenePollTimer = 0;
 
 /** pin → Gerätestatus inkl. DOM */
 const stateByPin = new Map();
+
+/** gemeinsame UI für Beifahrer, Rücksitzbank, Lüfter-LEDs */
+let colorGroupEntry = null;
 
 function escapeHtml(str) {
   return String(str)
@@ -406,24 +433,40 @@ async function fetchStatus() {
   return res.json();
 }
 
+function applyColorGroupStatus(data) {
+  if (!colorGroupEntry) return;
+
+  const remotes = [];
+  for (const lamp of COLOR_LAMPS) {
+    const remote = data[String(lamp.pin)];
+    if (remote) remotes.push(remote);
+  }
+  if (!remotes.length) return;
+
+  colorGroupEntry.on = remotes.some((remote) => remote.on);
+  const source = remotes.find((remote) => remote.on) || remotes[0];
+  if (typeof source.h === "number") colorGroupEntry.color.h = source.h;
+  if (typeof source.s === "number") colorGroupEntry.color.s = source.s / 100;
+  if (typeof source.brightness === "number") {
+    colorGroupEntry.color.v = source.brightness / 100;
+  }
+  syncRgb(colorGroupEntry.color);
+  if (colorGroupEntry.refreshColor) colorGroupEntry.refreshColor();
+  updateTileUi(COLOR_GROUP, colorGroupEntry);
+}
+
 function applyStatus(data) {
   if (!data || typeof data !== "object") return;
 
+  applyColorGroupStatus(data);
+
   for (const device of DEVICES) {
+    if (device.kind === "color") continue;
     const remote = data[String(device.pin)];
     const entry = stateByPin.get(device.pin);
     if (!remote || !entry) continue;
 
     entry.on = Boolean(remote.on);
-    if (device.kind === "color" && entry.color) {
-      if (typeof remote.h === "number") entry.color.h = remote.h;
-      if (typeof remote.s === "number") entry.color.s = remote.s / 100;
-      if (typeof remote.brightness === "number") {
-        entry.color.v = remote.brightness / 100;
-      }
-      syncRgb(entry.color);
-      if (entry.refreshColor) entry.refreshColor();
-    }
     updateTileUi(device, entry);
   }
 
@@ -517,6 +560,23 @@ function updateTileUi(device, entry) {
   }
 }
 
+async function postColorToLamps(state) {
+  const p = colorPayload(colorGroupEntry.color);
+  for (const lamp of COLOR_LAMPS) {
+    await postGpio({
+      pin: lamp.pin,
+      state: state ? "1" : "0",
+      h: p.h,
+      s: p.s,
+      brightness: p.brightness,
+      r: p.r,
+      g: p.g,
+      b: p.b,
+    });
+  }
+  return p;
+}
+
 async function toggleDevice(device) {
   const entry = stateByPin.get(device.pin);
   if (!entry || entry.busy) return;
@@ -526,23 +586,11 @@ async function toggleDevice(device) {
   updateTileUi(device, entry);
 
   try {
-    if (device.kind === "color") {
-      const p = colorPayload(entry.color);
-      await postGpio({
-        pin: device.pin,
-        state: next ? "1" : "0",
-        h: p.h,
-        s: p.s,
-        brightness: p.brightness,
-        r: p.r,
-        g: p.g,
-        b: p.b,
-      });
-    } else {
-      await postGpio({ pin: device.pin, state: next ? "1" : "0" });
-    }
+    await postGpio({ pin: device.pin, state: next ? "1" : "0" });
     entry.on = next;
-    applySceneStatus({ running: false, name: null });
+    if (!device.virtual) {
+      applySceneStatus({ running: false, name: null });
+    }
     announce(next ? `${device.name} ist an.` : `${device.name} ist aus.`);
   } catch (err) {
     console.error("GPIO set failed:", err);
@@ -555,8 +603,30 @@ async function toggleDevice(device) {
   }
 }
 
-async function sendColor(device, { turnOn = true } = {}) {
-  const entry = stateByPin.get(device.pin);
+async function toggleColorGroup() {
+  const entry = colorGroupEntry;
+  if (!entry || entry.busy) return;
+
+  const next = !entry.on;
+  entry.busy = true;
+  updateTileUi(COLOR_GROUP, entry);
+
+  try {
+    await postColorToLamps(next);
+    entry.on = next;
+    applySceneStatus({ running: false, name: null });
+    announce(next ? "Farblampen sind an." : "Farblampen sind aus.");
+  } catch (err) {
+    console.error("Color group set failed:", err);
+    announce("Farblampen: Fehler. Raspberry Pi erreichbar? (Tunnel / Heimnetz)");
+  } finally {
+    entry.busy = false;
+    updateTileUi(COLOR_GROUP, entry);
+  }
+}
+
+async function sendColor({ turnOn = true } = {}) {
+  const entry = colorGroupEntry;
   if (!entry) return;
 
   entry.wantOn = turnOn ? true : entry.on;
@@ -569,30 +639,20 @@ async function sendColor(device, { turnOn = true } = {}) {
   try {
     do {
       entry.colorQueued = false;
-      const p = colorPayload(entry.color);
       const nextOn = entry.wantOn !== false;
-      await postGpio({
-        pin: device.pin,
-        state: nextOn ? "1" : "0",
-        h: p.h,
-        s: p.s,
-        brightness: p.brightness,
-        r: p.r,
-        g: p.g,
-        b: p.b,
-      });
+      const p = await postColorToLamps(nextOn);
       entry.on = nextOn;
       applySceneStatus({ running: false, name: null });
       announce(
-        `${device.name}: RGB ${p.r}, ${p.g}, ${p.b}, ${p.brightness} Prozent.`
+        `Farblampen: RGB ${p.r}, ${p.g}, ${p.b}, ${p.brightness} Prozent.`
       );
     } while (entry.colorQueued);
   } catch (err) {
     console.error("Color set failed:", err);
-    announce(`${device.name}: Farbe nicht gesendet.`);
+    announce("Farblampen: Farbe nicht gesendet.");
   } finally {
     entry.sendingColor = false;
-    updateTileUi(device, entry);
+    updateTileUi(COLOR_GROUP, entry);
     if (entry.refreshColor) entry.refreshColor();
   }
 }
@@ -623,7 +683,7 @@ function createSwitchesTile(devices) {
       ${deviceIconHtml(SWITCH_ICON)}
       <span class="tile__body">
         <span class="tile__title">Schalter</span>
-        <span class="tile__subtitle">Beleuchtung und Lüfter</span>
+        <span class="tile__subtitle">On/ Off</span>
       </span>
     </div>
     <div class="switch-rows" role="group" aria-label="Ein- und Ausschalter"></div>
@@ -653,7 +713,7 @@ function createSwitchesTile(devices) {
     row.innerHTML = `
       <img
         class="switch-row__icon"
-        src="${escapeHtml(SWITCH_ICON)}"
+        src="${escapeHtml(device.icon || SWITCH_ICON)}"
         alt=""
         width="28"
         height="28"
@@ -754,7 +814,7 @@ function pickColorFromEvent(canvas, event, color) {
   return true;
 }
 
-function createColorTile(device) {
+function createColorTile() {
   const color = createColorState();
   const entry = {
     on: false,
@@ -763,14 +823,14 @@ function createColorTile(device) {
     color,
     refreshColor: null,
   };
-  stateByPin.set(device.pin, entry);
+  colorGroupEntry = entry;
 
   const el = document.createElement("div");
   el.className = "tile tile--color tile--lamp";
   el.setAttribute("role", "listitem");
-  el.dataset.deviceId = device.id;
-  el.dataset.pin = String(device.pin);
+  el.dataset.deviceId = COLOR_GROUP.id;
   el.dataset.kind = "color";
+  el.dataset.pins = COLOR_LAMPS.map((lamp) => lamp.pin).join(",");
 
   el.innerHTML = `
     <button
@@ -781,7 +841,7 @@ function createColorTile(device) {
     >
       ${deviceIconHtml()}
       <span class="tile__body tile__body--color">
-        <span class="tile__title">${escapeHtml(device.name)}</span>
+        <span class="tile__title">${escapeHtml(COLOR_GROUP.name)}</span>
         <span class="tile__subtitle">ausgeschaltet</span>
       </span>
     </button>
@@ -791,7 +851,7 @@ function createColorTile(device) {
         width="${WHEEL_SIZE}"
         height="${WHEEL_SIZE}"
         role="img"
-        aria-label="${escapeHtml(device.name)}: Farbkreis"
+        aria-label="${escapeHtml(COLOR_GROUP.name)}: Farbkreis"
       ></canvas>
       <label class="color-picker__brightness">
         <span class="color-picker__brightness-label">
@@ -804,7 +864,7 @@ function createColorTile(device) {
           max="100"
           step="1"
           value="85"
-          aria-label="${escapeHtml(device.name)} Helligkeit"
+          aria-label="${escapeHtml(COLOR_GROUP.name)} Helligkeit"
         />
       </label>
     </div>
@@ -839,13 +899,13 @@ function createColorTile(device) {
   function queueColorSend() {
     window.clearTimeout(debounceTimer);
     debounceTimer = window.setTimeout(() => {
-      sendColor(device, { turnOn: true });
+      sendColor({ turnOn: true });
     }, COLOR_DEBOUNCE_MS);
   }
 
   power.addEventListener("click", (event) => {
     event.preventDefault();
-    toggleDevice(device);
+    toggleColorGroup();
   });
 
   canvas.addEventListener("pointerdown", (event) => {
@@ -876,7 +936,7 @@ function createColorTile(device) {
       /* ignore */
     }
     window.clearTimeout(debounceTimer);
-    sendColor(device, { turnOn: true });
+    sendColor({ turnOn: true });
   };
 
   canvas.addEventListener("pointerup", endDrag);
@@ -891,11 +951,11 @@ function createColorTile(device) {
 
   slider.addEventListener("change", () => {
     window.clearTimeout(debounceTimer);
-    sendColor(device, { turnOn: color.v > 0 });
+    sendColor({ turnOn: color.v > 0 });
   });
 
   refreshColor();
-  updateTileUi(device, entry);
+  updateTileUi(COLOR_GROUP, entry);
   return el;
 }
 
@@ -926,16 +986,8 @@ function renderPage() {
   if (!grid) return;
 
   const fragment = document.createDocumentFragment();
-  const switchDevices = [];
-  for (const device of DEVICES) {
-    if (device.kind === "switch") {
-      switchDevices.push(device);
-      continue;
-    }
-    fragment.appendChild(
-      createColorTile(device)
-    );
-  }
+  const switchDevices = DEVICES.filter((device) => device.kind === "switch");
+  fragment.appendChild(createColorTile());
   fragment.appendChild(createSwitchesTile(switchDevices));
   fragment.appendChild(createScenesTile());
   fragment.appendChild(createChibiTile());

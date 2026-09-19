@@ -31,12 +31,12 @@ Themenseite "Hello World" (hw)
 Themenseite "Light" (lt)
 * Inhalt: Steuerung der Beleuchtung im Auto
 * Gleiches Kachellayout wie "Main Hub"
+* Eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; setzt Beifahrer, Rücksitzbank und Lüfter-LEDs gemeinsam auf dieselbe Farbe/Helligkeit (Web-UI; API weiterhin je Pin); in der Statuszeile gewählte Farbe als RGB-Werte + gewählte Helligkeit in %
 * Eine Kachel für den Sternenhimmel, On/Off Schalter; Ansteuerung siehe Projekt 02 Raspi
-* Für die Rücksitzbank und den Beifahrer je eine Kachel "Farbauswahl": On/Off + Farbkreis + Helligkeitsregler; in der Statuszeile gewählte Farbe als RGB-Werte + gewählte Helligkeit in %; Ansteuerung siehe Projekt 02 Raspi
 * Eine Kachel "Lüfter" als On/Off-Schalter für den Lüftermotor (Relais); Ansteuerung siehe Projekt 02 Raspi
-* Eine Kachel "Lüfter-LEDs" als Farbauswahl (12× WS2812), unabhängig vom Lüftermotor; Ansteuerung siehe Projekt 02 Raspi
+* Ein virtueller Schalter "Musik-Sync" (On/Off, kein GPIO) in der Schalter-Kachel neben Sternenhimmel und Lüfter; für späteren Musik-Sync-Modus
 * Zusätzlich zum Mainhub als letzte Kachel auch die Themenkachel "Chibi" (cb) anfügen
-* Reihenfolge Beifahrer, Rücksitzbank, Lüfter-LEDs, Sternenhimmel, Lüfter, Szenen, Chibi
+* Reihenfolge Farbauswahl, Sternenhimmel, Lüfter, Musik-Sync, Szenen, Chibi
 
 Themenkachel "Monitor" (mn)
 * Nur eine Kachel mit Inhalt, keine Unterseite
@@ -69,6 +69,7 @@ Geräte
 * WS2812 mit 12 LEDs an GPIO 21 (PCM DOUT, Header-Stift 40): RGB-Lüfter LEDs (Farblampe), unabhängig vom Lüftermotor
 * Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
 * Fotowiderstand LDR 5528 GL5528, an GPIO tbd.
+* Virtueller Schalter "Musik-Sync" (kein GPIO, Web-API pin=100): On/Off für späteren Musik-Sync-Modus; HomeKit-Gerät
 
 Hinweis GPIO 21 (PCM):
 * PWM0/PWM1 sind bereits durch Rücksitzbank/Beifahrer belegt; der dritte WS2812-Strip läuft deshalb über PCM
@@ -83,7 +84,7 @@ Raspberry Pi "Jacky"
 * ngrok config add-authtoken <NGROK_AUTHTOKEN aus lokaler Umgebung / ngrok Dashboard>
 * ngrok http 8080 --url https://placate-impale-nautical.ngrok-free.dev
 * Steuerung über ein Python Skript (Daemon):
-  - Implementierung einer HomeKit Bridge mit den Geräten "Sternenhimmel" als On/Off-Lampe, WLED Streifen "Rücksitzbank" als Farblampe, WLED Streifen "Beifahrer" als Farblampe, "Lüfter" als On/Off-Schalter und "Lüfter-LEDs" als Farblampe
+  - Implementierung einer HomeKit Bridge mit den Geräten "Sternenhimmel" als On/Off-Lampe, WLED Streifen "Rücksitzbank" als Farblampe, WLED Streifen "Beifahrer" als Farblampe, "Lüfter" als On/Off-Schalter, "Lüfter-LEDs" als Farblampe und "Musik-Sync" als virtueller On/Off-Schalter (kein GPIO)
   - Lüfter beim Start des Python-Skripts immer einschalten (danach per HomeKit/Web-API schaltbar)
   - Implementierung eines Web API Endpoint ebenfalls zur Steuerung der Geräte
   - Den Status der Geräte synchron halten, wenn per Web API gesteuert wurde

@@ -8,12 +8,14 @@ Geräte (AGENTS.md):
   - Beifahrer      → GPIO 13  WS2812 Farblampe (PWM1)
   - Lüfter         → GPIO 22  On/Off-Schalter (active_high=True), beim Daemon-Start immer EIN
   - Lüfter-LEDs    → GPIO 21  WS2812 Farblampe (PCM DOUT, rpi_ws281x wie PWM-Streifen)
+  - Musik-Sync     → virtuell (pin 100), On/Off-Schalter ohne GPIO
 
 HomeKit: Bridge „Tesla Bridge“ mit Switches + Color-Lightbulbs.
 
 Web-API:
   POST /gpio/set   pin=XX&state=0|1
                    optional: r,g,b (0–255) und/oder h,s,brightness
+                   pin=100 schaltet den virtuellen Musik-Sync (ohne Szene zu stoppen)
   POST /scene/start  Szene starten (name=welcome|rainbow|stars|heartbeat|rider)
   POST /scene/stop   laufende Szene stoppen und Streifen wiederherstellen
   GET  /status     JSON mit aktuellem Zustand
@@ -67,7 +69,7 @@ log = logging.getLogger("tesla-bridge")
 SCRIPT_DIR = Path(__file__).resolve().parent
 STATE_FILE = SCRIPT_DIR / "homekit.state"
 
-# Pins laut AGENTS.md
+# Pins laut AGENTS.md (100 = virtueller Schalter, kein GPIO)
 PINS = {
     "sternenhimmel": 17,
     "ruecksitzbank": 12,
@@ -75,6 +77,7 @@ PINS = {
     "luefter": 22,
     "luefter_leds": 21,
     "taster": 27,
+    "music_sync": 100,
 }
 
 # LED-Anzahl pro Streifen (oder Env WS2812_COUNT_*)
@@ -565,7 +568,7 @@ def init_fan_relay() -> OutputDevice:
 
 
 class GpioSwitch(Accessory):
-    """On/Off-Schalter (Sternenhimmel / Lüfter)."""
+    """On/Off-Schalter (Sternenhimmel / Lüfter / virtueller Musik-Sync)."""
 
     category = CATEGORY_SWITCH
 
@@ -578,20 +581,25 @@ class GpioSwitch(Accessory):
         active_high: bool = False,
         initial_on: bool = False,
         device: OutputDevice | None = None,
+        virtual: bool = False,
         **kwargs,
     ):
         super().__init__(driver, display_name, *args, **kwargs)
         self.pin = pin
-        self.device = device or OutputDevice(
-            pin, active_high=active_high, initial_value=initial_on
-        )
+        self.virtual = virtual
+        if virtual:
+            self.device = None
+        else:
+            self.device = device or OutputDevice(
+                pin, active_high=active_high, initial_value=initial_on
+            )
         self._on = bool(initial_on)
 
         self.set_info_service(
             manufacturer="TeslaAPPS",
-            model="Jacky Switch",
-            serial_number=f"gpio-{pin}",
-            firmware_revision="1.2",
+            model="Jacky Virtual Switch" if virtual else "Jacky Switch",
+            serial_number=f"virtual-{pin}" if virtual else f"gpio-{pin}",
+            firmware_revision="1.3",
         )
 
         serv = self.add_preload_service("Switch")
@@ -601,22 +609,27 @@ class GpioSwitch(Accessory):
             setter_callback=self._set_on,
         )
         REGISTRY[pin] = self
-        log.info(
-            "%s an GPIO %s (active_high=%s, initial_on=%s)",
-            display_name,
-            pin,
-            active_high,
-            self._on,
-        )
+        if virtual:
+            log.info("%s virtuell (pin %s, initial_on=%s)", display_name, pin, self._on)
+        else:
+            log.info(
+                "%s an GPIO %s (active_high=%s, initial_on=%s)",
+                display_name,
+                pin,
+                active_high,
+                self._on,
+            )
         if self._on:
             self._apply()
 
     def _apply(self) -> None:
-        if self._on:
-            self.device.on()
-        else:
-            self.device.off()
-        log.info("%s → %s  (GPIO %s)", self.display_name, "ON" if self._on else "OFF", self.pin)
+        if self.device is not None:
+            if self._on:
+                self.device.on()
+            else:
+                self.device.off()
+        target = "virtual" if self.virtual else f"GPIO {self.pin}"
+        log.info("%s → %s  (%s)", self.display_name, "ON" if self._on else "OFF", target)
 
     def _set_on(self, value) -> None:
         self._on = bool(value)
@@ -628,10 +641,18 @@ class GpioSwitch(Accessory):
         self._apply()
 
     def as_status(self) -> dict:
-        return {"name": self.display_name, "pin": self.pin, "kind": "switch", "on": self._on}
+        return {
+            "name": self.display_name,
+            "pin": self.pin,
+            "kind": "switch",
+            "on": self._on,
+            "virtual": self.virtual,
+        }
 
     def stop(self) -> None:
         self._on = False
+        if self.device is None:
+            return
         try:
             self.device.off()
         except Exception:
@@ -776,6 +797,34 @@ def _first_float(params: dict, key: str):
     return None if raw is None else float(raw)
 
 
+def apply_from_web_api(
+    acc,
+    *,
+    on: bool | None = None,
+    hue: float | None = None,
+    sat: float | None = None,
+    bri: int | None = None,
+    rgb: tuple[int, int, int] | None = None,
+) -> None:
+    """Web-API-Befehl anwenden und HomeKit-Status mitziehen.
+
+    Virtuelle Schalter (kein GPIO) lassen eine laufende Szene unangetastet.
+    """
+    if (
+        SCENE_PLAYER is not None
+        and SCENE_PLAYER.is_running
+        and not getattr(acc, "virtual", False)
+    ):
+        SCENE_PLAYER.stop(restore=False)
+
+    if isinstance(acc, ColorLamp):
+        acc.apply_from_api(on=on, hue=hue, sat=sat, bri=bri, rgb=rgb)
+        return
+    if on is None:
+        raise ValueError("state für den Schalter erforderlich")
+    acc.apply_from_api(on=on)
+
+
 class GpioRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         log.debug("%s - %s", self.address_string(), fmt % args)
@@ -915,15 +964,7 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
             if on is None and rgb is None and hue is None and sat is None and bri is None:
                 raise ValueError("state oder Farbe (r,g,b / h,s / brightness) erforderlich")
 
-            if SCENE_PLAYER is not None and SCENE_PLAYER.is_running:
-                SCENE_PLAYER.stop(restore=False)
-
-            if isinstance(acc, ColorLamp):
-                acc.apply_from_api(on=on, hue=hue, sat=sat, bri=bri, rgb=rgb)
-            else:
-                if on is None:
-                    raise ValueError("state für den Schalter erforderlich")
-                acc.apply_from_api(on=on)
+            apply_from_web_api(acc, on=on, hue=hue, sat=sat, bri=bri, rgb=rgb)
 
             log.info("Web-API: pin %s", pin)
             self._send(200, "OK\n")
@@ -966,7 +1007,7 @@ def get_bridge(driver, strips, fan_strips) -> Bridge:
         manufacturer="TeslaAPPS",
         model="Jacky",
         serial_number="tesla-bridge-1",
-        firmware_revision="1.2",
+        firmware_revision="1.3",
     )
     bridge.add_accessory(
         GpioSwitch(driver, "Sternenhimmel", PINS["sternenhimmel"], active_high=False)
@@ -1007,6 +1048,9 @@ def get_bridge(driver, strips, fan_strips) -> Bridge:
             0,
             PINS["luefter_leds"],
         )
+    )
+    bridge.add_accessory(
+        GpioSwitch(driver, "Musik-Sync", PINS["music_sync"], virtual=True)
     )
     return bridge
 

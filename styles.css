@@ -477,7 +477,7 @@ body.night-mode .photo-lightbox__caption {
   font-variant-numeric: tabular-nums;
 }
 
-/* —— Light: Farbkreis + Helligkeit (eine Kachel pro Streifen) —— */
+/* —— Light: Farbkreis + Helligkeit (eine Kachel für alle Streifen) —— */
 .tile--color {
   min-height: auto;
   padding: 1rem;
