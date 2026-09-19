@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installiert die Tesla HomeKit Bridge als systemd-Dienst.
+# Installiert die Tesla GPIO Web-API als systemd-Dienst.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"

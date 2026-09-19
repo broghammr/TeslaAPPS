@@ -2,9 +2,9 @@
 """Kurzer Test: LDR GL5528 an GPIO 26 (Header-Stift 37).
 
 Verdrahtung:
-  3,3 V (Stift 1/17) — 10 kΩ — GPIO 26 (Stift 37) — GL5528 — GND (Stift 39)
+  3,3 V (Stift 1/17) — 100 kΩ — GPIO 26 (Stift 37) — GL5528 — GND (Stift 39)
 
-Dunkel → HIGH, hell → LOW. Interner Pull aus (externer 10 kΩ).
+Dunkel → HIGH, hell → LOW. Interner Pull aus (externer 100 kΩ).
 """
 
 import time

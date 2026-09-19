@@ -67,9 +67,9 @@ Geräte
 * WS2812 WLED Streifen mit 24 LEDs an GPIO 13 (PWM1): Beifahrer (Farblampe)
 * Relais an GPIO 22 (active_high=True): RGB-Lüfter Motor (On/Off), unabhängig von den Lüfter-LEDs; beim Start des Daemons immer EIN
 * WS2812 mit 12 LEDs an GPIO 21 (PCM DOUT, Header-Stift 40): RGB-Lüfter LEDs (Farblampe), unabhängig vom Lüftermotor
-* Taster an GPIO 27 (pull_up=True): Taster soll nicht als HomeKit Gerät implementiert werden
-* Fotowiderstand LDR 5528 GL5528 an GPIO 26 (Header-Stift 37): Spannungsteiler 3,3 V — 10 kΩ — GPIO 26 — LDR — GND; intern kein Pull; dunkel=HIGH, hell=LOW
-* Virtueller Schalter "Musik-Sync" (kein GPIO, Web-API pin=100): On/Off für späteren Musik-Sync-Modus; HomeKit-Gerät
+* Taster an GPIO 27 (pull_up=True): startet die Startanimation, kein Web-API-Gerät
+* Fotowiderstand LDR 5528 GL5528 an GPIO 26 (Header-Stift 37): Spannungsteiler 3,3 V — 100 kΩ — GPIO 26 — LDR — GND; intern kein Pull; dunkel=HIGH, hell=LOW
+* Virtueller Schalter "Musik-Sync" (kein GPIO, Web-API pin=100): On/Off für späteren Musik-Sync-Modus
 
 Hinweis GPIO 21 (PCM):
 * PWM0/PWM1 sind bereits durch Rücksitzbank/Beifahrer belegt; der dritte WS2812-Strip läuft deshalb über PCM
@@ -84,12 +84,11 @@ Raspberry Pi "Jacky"
 * ngrok config add-authtoken <NGROK_AUTHTOKEN aus lokaler Umgebung / ngrok Dashboard>
 * ngrok http 8080 --url https://placate-impale-nautical.ngrok-free.dev
 * Steuerung über ein Python Skript (Daemon):
-  - Implementierung einer HomeKit Bridge mit den Geräten "Sternenhimmel" als On/Off-Lampe, WLED Streifen "Rücksitzbank" als Farblampe, WLED Streifen "Beifahrer" als Farblampe, "Lüfter" als On/Off-Schalter, "Lüfter-LEDs" als Farblampe und "Musik-Sync" als virtueller On/Off-Schalter (kein GPIO)
-  - Lüfter beim Start des Python-Skripts immer einschalten (danach per HomeKit/Web-API schaltbar)
-  - Implementierung eines Web API Endpoint ebenfalls zur Steuerung der Geräte
-  - Den Status der Geräte synchron halten, wenn per Web API gesteuert wurde
+  - Steuerung der Geräte über die Web-API: "Sternenhimmel" als On/Off-Lampe, WLED Streifen "Rücksitzbank" als Farblampe, WLED Streifen "Beifahrer" als Farblampe, "Lüfter" als On/Off-Schalter, "Lüfter-LEDs" als Farblampe und "Musik-Sync" als virtueller On/Off-Schalter (kein GPIO)
+  - Lüfter beim Start des Python-Skripts immer einschalten (danach per Web-API schaltbar)
+  - Den Status der Geräte synchron halten, wenn per Web-API gesteuert wurde
 * Dynamische Lichtszenen
-  - Startanimationen, welche die Tesla Startanimation aus dem Sommerupdate 2026 unterstützt, Dauer 30s. WLED Streifen Rücksitzbank, Beifahrer und Lüfter-LEDs dazu verwenden, nicht Sternenhimmel und nicht den Lüftermotor. Ausführung beim Start des Python Skripts (Daemon) und wenn der Taster an GPIO 27 gedrückt wurde — auch ohne Netz. HomeKit startet erst, sobald eine LAN-IP da ist.
+  - Startanimationen, welche die Tesla Startanimation aus dem Sommerupdate 2026 unterstützt, Dauer 30s. WLED Streifen Rücksitzbank, Beifahrer und Lüfter-LEDs dazu verwenden, nicht Sternenhimmel und nicht den Lüftermotor. Ausführung beim Start des Python Skripts (Daemon) und wenn der Taster an GPIO 27 gedrückt wurde.
   - Zusätzliche Loopszenen (Light-Seite, bis Stop oder andere Szene): Regenbogen, grüne funkelnde Sterne, roter Herzschlag, Knight Rider. Gleiche Streifen. API: POST /scene/start name=rainbow|stars|heartbeat|rider, POST /scene/stop.
 
 

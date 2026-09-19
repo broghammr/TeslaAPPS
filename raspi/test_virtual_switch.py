@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 
 def _stub_pi_modules() -> None:
-    """gpiozero/pyhap/zeroconf fehlen auf dem Dev-Rechner."""
+    """gpiozero fehlt auf dem Dev-Rechner."""
     if "gpiozero" in sys.modules:
         return
 
@@ -22,11 +22,6 @@ def _stub_pi_modules() -> None:
     stub("gpiozero", Button=MagicMock, Device=MagicMock(), OutputDevice=MagicMock)
     stub("gpiozero.pins")
     stub("gpiozero.pins.lgpio", LGPIOFactory=MagicMock)
-    stub("pyhap")
-    stub("pyhap.accessory", Accessory=object, Bridge=object)
-    stub("pyhap.accessory_driver", AccessoryDriver=object)
-    stub("pyhap.const", CATEGORY_LIGHTBULB=5, CATEGORY_SWITCH=8)
-    stub("zeroconf", InterfaceChoice=MagicMock())
 
 
 _stub_pi_modules()
@@ -45,7 +40,7 @@ class FakeSwitch:
 
 
 class FakeColorLamp:
-    """Duck-type ColorLamp, ohne pyhap/GPIO."""
+    """Duck-type ColorLamp, ohne GPIO."""
 
     def __init__(self):
         self.calls = []
@@ -91,6 +86,34 @@ class ApplyFromWebApiTests(unittest.TestCase):
     def test_music_sync_pin_is_virtual(self):
         self.assertEqual(hb.PINS["music_sync"], 100)
         self.assertNotIn(100, (17, 12, 13, 22, 21, 27))
+
+
+class DeviceClassTests(unittest.TestCase):
+    def setUp(self):
+        hb.REGISTRY.clear()
+        self.addCleanup(hb.REGISTRY.clear)
+
+    def test_virtual_switch_apply_and_status(self):
+        sw = hb.GpioSwitch("Musik-Sync", 100, virtual=True)
+        self.assertFalse(sw._on)
+        sw.apply_from_api(on=True)
+        self.assertTrue(sw._on)
+        status = sw.as_status()
+        self.assertEqual(status["kind"], "switch")
+        self.assertTrue(status["virtual"])
+        self.assertTrue(status["on"])
+        self.assertIs(hb.REGISTRY[100], sw)
+
+    def test_color_lamp_rgb_status(self):
+        lamp = hb.ColorLamp("Beifahrer", hb.NullStrips(), 0, 13)
+        lamp.apply_from_api(on=True, rgb=(255, 0, 0))
+        status = lamp.as_status()
+        self.assertTrue(status["on"])
+        self.assertEqual(status["kind"], "color")
+        self.assertEqual(status["r"], 255)
+        self.assertEqual(status["g"], 0)
+        self.assertEqual(status["b"], 0)
+        self.assertIs(hb.REGISTRY[13], lamp)
 
 
 if __name__ == "__main__":

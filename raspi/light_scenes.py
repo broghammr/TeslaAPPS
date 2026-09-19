@@ -25,9 +25,9 @@ SCENE_FPS = 30
 # Fallback, wenn keine eigene Ambient-Farbe gesetzt ist (#0070f3).
 TESLA_ICE = (0, 112, 243)
 WHITE = (255, 255, 255)
-HEART_RED = (220, 8, 28)
-STAR_GREEN = (0, 255, 72)
-RIDER_RED = (255, 16, 0)
+HEART_RED = (255, 0, 0)
+STAR_GREEN = (0, 255, 0)
+RIDER_RED = (255, 40, 0)
 
 SCENE_WELCOME = "welcome"
 SCENE_RAINBOW = "rainbow"

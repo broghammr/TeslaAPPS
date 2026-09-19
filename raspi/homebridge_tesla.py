@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tesla Model 3 Highland – HomeKit Bridge + Web-API
+Tesla Model 3 Highland – GPIO Web-API
 
 Geräte (AGENTS.md):
   - Sternenhimmel  → GPIO 17  On/Off-Schalter (active_high=False)
@@ -9,8 +9,6 @@ Geräte (AGENTS.md):
   - Lüfter         → GPIO 22  On/Off-Schalter (active_high=True), beim Daemon-Start immer EIN
   - Lüfter-LEDs    → GPIO 21  WS2812 Farblampe (PCM DOUT, rpi_ws281x wie PWM-Streifen)
   - Musik-Sync     → virtuell (pin 100), On/Off-Schalter ohne GPIO
-
-HomeKit: Bridge „Tesla Bridge“ mit Switches + Color-Lightbulbs.
 
 Web-API:
   POST /gpio/set   pin=XX&state=0|1
@@ -26,8 +24,6 @@ Szenen:
   Welcome 30s (Tesla Sommerupdate 2026) beim Daemon-Start und Taster GPIO 27.
   Loop: Regenbogen, Sterne, Herzschlag, Knight Rider über die Light-Seite.
   Nutzt Rücksitzbank, Beifahrer und Lüfter-LEDs (nicht Sternenhimmel/Lüftermotor).
-  Startanimation läuft ohne Netz; HomeKit erst nach LAN-IP.
-  HAP lauscht auf 0.0.0.0; mDNS folgt später LAN-IP-Wechseln.
 """
 
 from __future__ import annotations
@@ -38,19 +34,13 @@ import json
 import logging
 import os
 import signal
-import socket
 import threading
-import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from gpiozero import Button, Device, OutputDevice
 from gpiozero.pins.lgpio import LGPIOFactory
-from pyhap.accessory import Accessory, Bridge
-from pyhap.accessory_driver import AccessoryDriver
-from pyhap.const import CATEGORY_LIGHTBULB, CATEGORY_SWITCH
-from zeroconf import InterfaceChoice
 
 from light_scenes import SCENE_SPECS, TESLA_ICE, ScenePlayer
 
@@ -65,9 +55,6 @@ Device.pin_factory = LGPIOFactory()
 
 logging.basicConfig(level=logging.INFO, format="[%(module)s] %(message)s")
 log = logging.getLogger("tesla-bridge")
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-STATE_FILE = SCRIPT_DIR / "homekit.state"
 
 # Pins laut AGENTS.md (100 = virtueller Schalter, kein GPIO)
 PINS = {
@@ -100,143 +87,21 @@ SCENE_STRIP_PINS = (
     PINS["luefter_leds"],
 )
 
-HAP_PORT = 51826
 WEB_PORT = 8080
-PAIRING_PIN = b"031-45-154"
 THERMAL_PATH = Path("/sys/class/thermal/thermal_zone0/temp")
-LAN_WATCH_INTERVAL_S = 2.0
 
-# pin → Accessory (für Web-API ↔ HomeKit)
-REGISTRY: dict[int, Accessory] = {}
+# pin → Gerät (Web-API)
+REGISTRY: dict[int, GpioSwitch | ColorLamp] = {}
 SCENE_PLAYER: ScenePlayer | None = None
 STRIPS = None
 FAN_STRIPS = None
 FAN_RELAY: OutputDevice | None = None
 FAN_RELAY_ACTIVE_HIGH = True
 STOP = threading.Event()
-DRIVER: AccessoryDriver | None = None
-
-
-def _ipv4_via_route() -> str | None:
-    """Nicht-lokale IPv4 über die Default-Route (kein Internet-Ping)."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        sock.settimeout(0.2)
-        sock.connect(("1.1.1.1", 80))
-        ip = sock.getsockname()[0]
-        if ip and not ip.startswith("127."):
-            return ip
-        return None
-    except OSError:
-        return None
-    finally:
-        sock.close()
-
-
-def _ipv4_via_interfaces() -> str | None:
-    """Erste nicht-lokale IPv4 einer echten Schnittstelle (LAN ohne Default-Route)."""
-    try:
-        import ifaddr
-    except ImportError:
-        return None
-    skip_prefix = ("lo", "docker", "br-", "veth", "tun", "wg")
-    for adapter in ifaddr.get_adapters():
-        name = (adapter.nice_name or adapter.name or "").lower()
-        if name.startswith(skip_prefix):
-            continue
-        for ipinfo in adapter.ips:
-            ip = ipinfo.ip
-            if not isinstance(ip, str):
-                continue
-            if ip.startswith(("127.", "169.254.")):
-                continue
-            return ip
-    return None
-
-
-def local_ipv4() -> str | None:
-    """Aktuelle LAN-IPv4: Default-Route, sonst erste Schnittstellen-Adresse."""
-    return _ipv4_via_route() or _ipv4_via_interfaces()
-
-
-def wait_for_lan() -> str:
-    """Blockiert bis eine LAN-IP da ist. GPIO und Animation laufen parallel."""
-    ip = local_ipv4()
-    if ip:
-        return ip
-    log.info("HomeKit wartet auf LAN-IP (kein Timeout, Startanimation läuft unabhängig)")
-    while not STOP.is_set():
-        ip = local_ipv4()
-        if ip:
-            log.info("LAN-IP %s da, HomeKit startet", ip)
-            return ip
-        time.sleep(0.5)
-    raise SystemExit(0)
-
-
-def homekit_driver_kwargs(address: str) -> dict:
-    """HAP lauscht auf allen IPs, mDNS wirbt mit der aktuellen LAN-Adresse."""
-    return {
-        "port": HAP_PORT,
-        "persist_file": str(STATE_FILE),
-        "pincode": PAIRING_PIN,
-        "listen_address": "0.0.0.0",
-        "advertised_address": address,
-        "interface_choice": InterfaceChoice.All,
-    }
-
-
-def next_lan_watch_state(
-    current: str, lost: bool, new_ip: str | None
-) -> tuple[str, bool, bool]:
-    """Nächster LAN-Wächter-Zustand: (current_ip, lost, should_refresh_mdns)."""
-    if new_ip is None:
-        return current, True, False
-    if lost or new_ip != current:
-        return new_ip, False, True
-    return current, False, False
-
-
-def apply_advertised_address(driver: AccessoryDriver, ip: str) -> None:
-    """Aktualisiert die HomeKit-mDNS-Anzeige auf eine neue LAN-IP."""
-    driver.state.addresses = [ip]
-    if getattr(driver, "mdns_service_info", None) is None:
-        log.info("HomeKit-mDNS noch nicht aktiv, werbe später mit %s", ip)
-        return
-    try:
-        driver.update_advertisement()
-    except Exception:
-        log.exception("HomeKit-mDNS Update auf %s fehlgeschlagen", ip)
-
-
-def watch_lan_ip(driver: AccessoryDriver, initial: str) -> None:
-    """Erkennt IP-Verlust und Netzwechsel und erneuert die HomeKit-Anzeige."""
-    current = initial
-    lost = False
-    log.info("LAN-Wächter aktiv, HomeKit wirbt mit %s", current)
-    while not STOP.wait(LAN_WATCH_INTERVAL_S):
-        new_ip = local_ipv4()
-        next_current, next_lost, refresh = next_lan_watch_state(current, lost, new_ip)
-        if next_lost and not lost:
-            log.warning("LAN-IP %s weg, HomeKit wartet auf neues Netz", current)
-        elif refresh:
-            if lost and new_ip == current:
-                log.info("LAN-IP %s wieder da, HomeKit-mDNS wird erneuert", new_ip)
-            else:
-                log.info(
-                    "LAN-IP-Wechsel %s → %s, HomeKit-mDNS wird aktualisiert",
-                    current,
-                    new_ip,
-                )
-            apply_advertised_address(driver, next_current)
-        current, lost = next_current, next_lost
 
 
 def request_stop(signum=None, frame=None) -> None:
     STOP.set()
-    driver = DRIVER
-    if driver is not None:
-        driver.signal_handler(signum or signal.SIGTERM, frame)
 
 
 def read_cpu_temp_c() -> float:
@@ -246,13 +111,13 @@ def read_cpu_temp_c() -> float:
 
 
 def hsv_to_rgb(h: float, s: float, v: float) -> tuple[int, int, int]:
-    """HomeKit HSV (h 0–360, s/v 0–100) → RGB 0–255."""
+    """HSV (h 0–360, s/v 0–100) → RGB 0–255."""
     r, g, b = colorsys.hsv_to_rgb(h / 360.0, s / 100.0, v / 100.0)
     return int(round(r * 255)), int(round(g * 255)), int(round(b * 255))
 
 
 def rgb_to_hsv(r: int, g: int, b: int) -> tuple[float, float, float]:
-    """RGB 0–255 → HomeKit HSV."""
+    """RGB 0–255 → HSV (h 0–360, s/v 0–100)."""
     h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
     return h * 360.0, s * 100.0, v * 100.0
 
@@ -529,7 +394,7 @@ def init_strips():
         log.error(
             "WS2812-Init fehlgeschlagen (%s). "
             "PWM braucht root und dtparam=audio=off (danach reboot). "
-            "HomeKit läuft weiter, Streifen bleiben dunkel.",
+            "Web-API läuft weiter, Streifen bleiben dunkel.",
             exc,
         )
         return NullStrips()
@@ -546,14 +411,14 @@ def init_fan_strip():
         log.error(
             "WS2812 PCM-Init fehlgeschlagen (%s). "
             "GPIO 21 (Header-Stift 40) braucht root; DMA-Kanal nicht 10. "
-            "HomeKit läuft weiter, Lüfter-LEDs bleiben dunkel.",
+            "Web-API läuft weiter, Lüfter-LEDs bleiben dunkel.",
             exc,
         )
         return NullStrips()
 
 
 def init_fan_relay() -> OutputDevice:
-    """Lüftermotor sofort einschalten, noch vor HomeKit/LAN."""
+    """Lüftermotor sofort einschalten."""
     device = OutputDevice(
         PINS["luefter"],
         active_high=FAN_RELAY_ACTIVE_HIGH,
@@ -567,24 +432,20 @@ def init_fan_relay() -> OutputDevice:
     return device
 
 
-class GpioSwitch(Accessory):
+class GpioSwitch:
     """On/Off-Schalter (Sternenhimmel / Lüfter / virtueller Musik-Sync)."""
-
-    category = CATEGORY_SWITCH
 
     def __init__(
         self,
-        driver,
         display_name,
         pin,
-        *args,
+        *,
         active_high: bool = False,
         initial_on: bool = False,
         device: OutputDevice | None = None,
         virtual: bool = False,
-        **kwargs,
     ):
-        super().__init__(driver, display_name, *args, **kwargs)
+        self.display_name = display_name
         self.pin = pin
         self.virtual = virtual
         if virtual:
@@ -594,20 +455,6 @@ class GpioSwitch(Accessory):
                 pin, active_high=active_high, initial_value=initial_on
             )
         self._on = bool(initial_on)
-
-        self.set_info_service(
-            manufacturer="TeslaAPPS",
-            model="Jacky Virtual Switch" if virtual else "Jacky Switch",
-            serial_number=f"virtual-{pin}" if virtual else f"gpio-{pin}",
-            firmware_revision="1.3",
-        )
-
-        serv = self.add_preload_service("Switch")
-        self.char_on = serv.configure_char(
-            "On",
-            value=self._on,
-            setter_callback=self._set_on,
-        )
         REGISTRY[pin] = self
         if virtual:
             log.info("%s virtuell (pin %s, initial_on=%s)", display_name, pin, self._on)
@@ -631,13 +478,8 @@ class GpioSwitch(Accessory):
         target = "virtual" if self.virtual else f"GPIO {self.pin}"
         log.info("%s → %s  (%s)", self.display_name, "ON" if self._on else "OFF", target)
 
-    def _set_on(self, value) -> None:
-        self._on = bool(value)
-        self._apply()
-
     def apply_from_api(self, *, on: bool, **_kwargs) -> None:
         self._on = bool(on)
-        self.char_on.set_value(self._on)
         self._apply()
 
     def as_status(self) -> dict:
@@ -659,13 +501,11 @@ class GpioSwitch(Accessory):
             pass
 
 
-class ColorLamp(Accessory):
+class ColorLamp:
     """WS2812-Farblampe (Hue / Saturation / Brightness)."""
 
-    category = CATEGORY_LIGHTBULB
-
-    def __init__(self, driver, display_name, strips, channel, pin, *args, **kwargs):
-        super().__init__(driver, display_name, *args, **kwargs)
+    def __init__(self, display_name, strips, channel, pin):
+        self.display_name = display_name
         self.strips = strips
         self.channel = channel
         self.pin = pin
@@ -673,23 +513,6 @@ class ColorLamp(Accessory):
         self._hue = 0.0
         self._sat = 0.0
         self._bri = 100
-
-        self.set_info_service(
-            manufacturer="TeslaAPPS",
-            model="Jacky WS2812",
-            serial_number=f"ws2812-gpio-{pin}",
-            firmware_revision="1.2",
-        )
-
-        serv = self.add_preload_service(
-            "Lightbulb",
-            chars=["Hue", "Saturation", "Brightness"],
-        )
-        self.char_on = serv.configure_char("On", value=False)
-        self.char_hue = serv.configure_char("Hue", value=self._hue)
-        self.char_sat = serv.configure_char("Saturation", value=self._sat)
-        self.char_bri = serv.configure_char("Brightness", value=self._bri)
-        serv.setter_callback = self._set_chars
         REGISTRY[pin] = self
         log.info("%s an GPIO %s (Kanal %s)", display_name, pin, channel)
 
@@ -716,17 +539,6 @@ class ColorLamp(Accessory):
             self.pin,
         )
 
-    def _set_chars(self, values: dict) -> None:
-        if "On" in values:
-            self._on = bool(values["On"])
-        if "Hue" in values:
-            self._hue = float(values["Hue"])
-        if "Saturation" in values:
-            self._sat = float(values["Saturation"])
-        if "Brightness" in values:
-            self._bri = int(values["Brightness"])
-        self._apply()
-
     def apply_from_api(
         self,
         *,
@@ -738,23 +550,17 @@ class ColorLamp(Accessory):
     ) -> None:
         if hue is not None:
             self._hue = float(hue)
-            self.char_hue.set_value(self._hue)
         if sat is not None:
             self._sat = float(sat)
-            self.char_sat.set_value(self._sat)
         if rgb is not None and hue is None and sat is None:
             h, s, v = rgb_to_hsv(*rgb)
             self._hue, self._sat = h, s
-            self.char_hue.set_value(self._hue)
-            self.char_sat.set_value(self._sat)
             if bri is None:
                 bri = int(round(v))
         if bri is not None:
             self._bri = max(0, min(100, int(bri)))
-            self.char_bri.set_value(self._bri)
         if on is not None:
             self._on = bool(on)
-            self.char_on.set_value(self._on)
         self._apply()
 
     def as_status(self) -> dict:
@@ -806,7 +612,7 @@ def apply_from_web_api(
     bri: int | None = None,
     rgb: tuple[int, int, int] | None = None,
 ) -> None:
-    """Web-API-Befehl anwenden und HomeKit-Status mitziehen.
+    """Web-API-Befehl anwenden.
 
     Virtuelle Schalter (kein GPIO) lassen eine laufende Szene unangetastet.
     """
@@ -869,12 +675,6 @@ class GpioRequestHandler(BaseHTTPRequestHandler):
                     "loop": False,
                 }
             )
-            driver = DRIVER
-            payload["homekit"] = {
-                "advertised_address": list(driver.state.addresses) if driver else [],
-                "port": HAP_PORT,
-                "waiting_for_lan": driver is None,
-            }
             self._send(200, payload)
             return
         if path == "/temp":
@@ -987,7 +787,7 @@ def start_web_server(port: int = WEB_PORT) -> HTTPServer:
 def attach_scene_button(player: ScenePlayer) -> Button:
     button = Button(PINS["taster"], pull_up=True, bounce_time=0.15)
     button.when_pressed = lambda: player.request_start("taster", name="welcome")
-    log.info("Taster GPIO %s → Startanimation (kein HomeKit-Gerät)", PINS["taster"])
+    log.info("Taster GPIO %s → Startanimation", PINS["taster"])
     return button
 
 
@@ -1001,66 +801,43 @@ def build_scene_player() -> ScenePlayer:
     )
 
 
-def get_bridge(driver, strips, fan_strips) -> Bridge:
-    bridge = Bridge(driver, "Tesla Bridge")
-    bridge.set_info_service(
-        manufacturer="TeslaAPPS",
-        model="Jacky",
-        serial_number="tesla-bridge-1",
-        firmware_revision="1.3",
+def register_devices(strips, fan_strips) -> None:
+    GpioSwitch("Sternenhimmel", PINS["sternenhimmel"], active_high=False)
+    ColorLamp(
+        "Rücksitzbank",
+        strips,
+        PWM["ruecksitzbank"]["channel"],
+        PWM["ruecksitzbank"]["pin"],
     )
-    bridge.add_accessory(
-        GpioSwitch(driver, "Sternenhimmel", PINS["sternenhimmel"], active_high=False)
+    ColorLamp(
+        "Beifahrer",
+        strips,
+        PWM["beifahrer"]["channel"],
+        PWM["beifahrer"]["pin"],
     )
-    bridge.add_accessory(
-        ColorLamp(
-            driver,
-            "Rücksitzbank",
-            strips,
-            PWM["ruecksitzbank"]["channel"],
-            PWM["ruecksitzbank"]["pin"],
-        )
+    GpioSwitch(
+        "Lüfter",
+        PINS["luefter"],
+        active_high=FAN_RELAY_ACTIVE_HIGH,
+        initial_on=True,
+        device=FAN_RELAY,
     )
-    bridge.add_accessory(
-        ColorLamp(
-            driver,
-            "Beifahrer",
-            strips,
-            PWM["beifahrer"]["channel"],
-            PWM["beifahrer"]["pin"],
-        )
+    ColorLamp(
+        "Lüfter-LEDs",
+        fan_strips,
+        0,
+        PINS["luefter_leds"],
     )
-    bridge.add_accessory(
-        GpioSwitch(
-            driver,
-            "Lüfter",
-            PINS["luefter"],
-            active_high=FAN_RELAY_ACTIVE_HIGH,
-            initial_on=True,
-            device=FAN_RELAY,
-        )
-    )
-    bridge.add_accessory(
-        ColorLamp(
-            driver,
-            "Lüfter-LEDs",
-            fan_strips,
-            0,
-            PINS["luefter_leds"],
-        )
-    )
-    bridge.add_accessory(
-        GpioSwitch(driver, "Musik-Sync", PINS["music_sync"], virtual=True)
-    )
-    return bridge
+    GpioSwitch("Musik-Sync", PINS["music_sync"], virtual=True)
 
 
 def main() -> None:
-    global SCENE_PLAYER, STRIPS, FAN_STRIPS, FAN_RELAY, DRIVER
+    global SCENE_PLAYER, STRIPS, FAN_STRIPS, FAN_RELAY
 
     FAN_RELAY = init_fan_relay()
     STRIPS = init_strips()
     FAN_STRIPS = init_fan_strip()
+    register_devices(STRIPS, FAN_STRIPS)
     start_web_server(WEB_PORT)
 
     SCENE_PLAYER = build_scene_player()
@@ -1075,22 +852,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, request_stop)
 
     try:
-        address = wait_for_lan()
-        driver = AccessoryDriver(**homekit_driver_kwargs(address))
-        DRIVER = driver
-        bridge = get_bridge(driver, STRIPS, FAN_STRIPS)
-        driver.add_accessory(accessory=bridge)
-        log.info("HomeKit Pairing-Code: %s", PAIRING_PIN.decode())
-        log.info("HomeKit lauscht auf 0.0.0.0:%s, mDNS wirbt %s", HAP_PORT, address)
-        if STOP.is_set():
-            return
-        threading.Thread(
-            target=watch_lan_ip,
-            args=(driver, address),
-            daemon=True,
-            name="lan-watch",
-        ).start()
-        driver.start()
+        STOP.wait()
     finally:
         SCENE_PLAYER.stop()
         if button is not None:
