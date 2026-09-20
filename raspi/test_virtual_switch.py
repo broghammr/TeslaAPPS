@@ -19,7 +19,14 @@ def _stub_pi_modules() -> None:
         sys.modules[name] = mod
         return mod
 
-    stub("gpiozero", Button=MagicMock, Device=MagicMock(), OutputDevice=MagicMock)
+    stub(
+        "gpiozero",
+        Button=MagicMock,
+        Device=MagicMock(),
+        OutputDevice=MagicMock,
+        LED=MagicMock,
+        DigitalInputDevice=MagicMock,
+    )
     stub("gpiozero.pins")
     stub("gpiozero.pins.lgpio", LGPIOFactory=MagicMock)
 
@@ -86,6 +93,12 @@ class ApplyFromWebApiTests(unittest.TestCase):
     def test_music_sync_pin_is_virtual(self):
         self.assertEqual(hb.PINS["music_sync"], 100)
         self.assertNotIn(100, (17, 12, 13, 22, 21, 27))
+
+    def test_ldr_pins_are_not_api_devices(self):
+        self.assertEqual(hb.PINS["ldr"], 26)
+        self.assertEqual(hb.PINS["ldr_led"], 16)
+        self.assertNotIn(26, (17, 12, 13, 22, 21, 27, 100))
+        self.assertNotIn(16, (17, 12, 13, 22, 21, 27, 100))
 
 
 class DeviceClassTests(unittest.TestCase):

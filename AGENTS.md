@@ -68,7 +68,8 @@ Geräte
 * Relais an GPIO 22 (active_high=True): RGB-Lüfter Motor (On/Off), unabhängig von den Lüfter-LEDs; beim Start des Daemons immer EIN
 * WS2812 mit 12 LEDs an GPIO 21 (PCM DOUT, Header-Stift 40): RGB-Lüfter LEDs (Farblampe), unabhängig vom Lüftermotor
 * Taster an GPIO 27 (pull_up=True): startet die Startanimation, kein Web-API-Gerät
-* Fotowiderstand LDR 5528 GL5528 an GPIO 26 (Header-Stift 37): Spannungsteiler 3,3 V — 100 kΩ — GPIO 26 — LDR — GND; intern kein Pull; dunkel=HIGH, hell=LOW
+* Fotowiderstand LDR 5528 GL5528 an GPIO 26 (Header-Stift 37): Spannungsteiler 3,3 V — Poti — GPIO 26 — LDR — GND; intern kein Pull; dunkel=HIGH, hell=LOW; kein Web-API-Gerät
+* Kontroll-LED an GPIO 16 (Header-Stift 36): 220–330 Ω, Anode an GPIO, Kathode an GND; an=dunkel, aus=hell; nur Kalibrierung, kein Web-API-Gerät
 * Virtueller Schalter "Musik-Sync" (kein GPIO, Web-API pin=100): On/Off für späteren Musik-Sync-Modus
 
 Hinweis GPIO 21 (PCM):

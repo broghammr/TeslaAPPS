@@ -9,6 +9,8 @@ Geräte (AGENTS.md):
   - Lüfter         → GPIO 22  On/Off-Schalter (active_high=True), beim Daemon-Start immer EIN
   - Lüfter-LEDs    → GPIO 21  WS2812 Farblampe (PCM DOUT, rpi_ws281x wie PWM-Streifen)
   - Musik-Sync     → virtuell (pin 100), On/Off-Schalter ohne GPIO
+  - LDR            → GPIO 26  Spannungsteiler (kein Web-API-Gerät)
+  - LDR-LED        → GPIO 16  Kontroll-LED an=dunkel, aus=hell
 
 Web-API:
   POST /gpio/set   pin=XX&state=0|1
@@ -39,7 +41,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from gpiozero import Button, Device, OutputDevice
+from gpiozero import LED, Button, Device, DigitalInputDevice, OutputDevice
 from gpiozero.pins.lgpio import LGPIOFactory
 
 from light_scenes import SCENE_SPECS, TESLA_ICE, ScenePlayer
@@ -64,6 +66,8 @@ PINS = {
     "luefter": 22,
     "luefter_leds": 21,
     "taster": 27,
+    "ldr": 26,
+    "ldr_led": 16,
     "music_sync": 100,
 }
 
@@ -791,6 +795,33 @@ def attach_scene_button(player: ScenePlayer) -> Button:
     return button
 
 
+def attach_ldr_indicator() -> tuple[DigitalInputDevice, LED]:
+    """LDR-Pegel auf die Kontroll-LED spiegeln (Kalibrierung, kein API-Gerät)."""
+    ldr = DigitalInputDevice(
+        PINS["ldr"],
+        pull_up=None,
+        active_state=True,
+        bounce_time=0.05,
+    )
+    led = LED(PINS["ldr_led"])
+
+    def apply(_=None) -> None:
+        if ldr.value:
+            led.on()
+        else:
+            led.off()
+
+    ldr.when_activated = apply
+    ldr.when_deactivated = apply
+    apply()
+    log.info(
+        "LDR GPIO %s → Kontroll-LED GPIO %s (an=dunkel, aus=hell)",
+        PINS["ldr"],
+        PINS["ldr_led"],
+    )
+    return ldr, led
+
+
 def build_scene_player() -> ScenePlayer:
     return ScenePlayer(
         rear_count=LED_COUNT["ruecksitzbank"],
@@ -842,10 +873,21 @@ def main() -> None:
 
     SCENE_PLAYER = build_scene_player()
     button = None
+    ldr = None
+    ldr_led = None
     try:
         button = attach_scene_button(SCENE_PLAYER)
     except Exception as exc:
         log.error("Taster GPIO %s nicht verfügbar: %s", PINS["taster"], exc)
+    try:
+        ldr, ldr_led = attach_ldr_indicator()
+    except Exception as exc:
+        log.error(
+            "LDR GPIO %s / LED GPIO %s nicht verfügbar: %s",
+            PINS["ldr"],
+            PINS["ldr_led"],
+            exc,
+        )
     SCENE_PLAYER.request_start("daemon")
 
     signal.signal(signal.SIGTERM, request_stop)
@@ -858,6 +900,17 @@ def main() -> None:
         if button is not None:
             try:
                 button.close()
+            except Exception:
+                pass
+        if ldr_led is not None:
+            try:
+                ldr_led.off()
+                ldr_led.close()
+            except Exception:
+                pass
+        if ldr is not None:
+            try:
+                ldr.close()
             except Exception:
                 pass
         STRIPS.close()
