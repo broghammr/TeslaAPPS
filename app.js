@@ -52,19 +52,32 @@ const TOPICS = [
     imageAlt: "Chibi: Startanimation starten",
     ready: true,
   },
+  {
+    id: "perlin-noise",
+    title: "Perlin Noise",
+    subtitle: "Testing only",
+    icon: ICONS.helloWorld,
+    kind: "perlin",
+    ready: true,
+    status: "Live-Noise",
+  },
 ];
 
 function createTile(topic) {
   const isImageTile = Boolean(topic.image);
   const isMonitor = topic.kind === "monitor";
+  const isPerlin = topic.kind === "perlin";
   const isChibi = topic.kind === "chibi";
   const isLink = Boolean(topic.ready && topic.href && !isMonitor && !isChibi);
-  const el = document.createElement(isLink ? "a" : "button");
+  const el = document.createElement(
+    isLink ? "a" : isPerlin ? "div" : "button"
+  );
   el.className =
     "tile" +
     (!topic.ready && !isImageTile ? " tile--soon" : "") +
     (isImageTile ? " tile--image" : "") +
     (isMonitor ? " tile--monitor" : "") +
+    (isPerlin ? " tile--perlin" : "") +
     (isChibi ? " tile--chibi" : "") +
     (topic.highlightImage ? " tile--has-highlight" : "");
   el.setAttribute("role", "listitem");
@@ -72,7 +85,7 @@ function createTile(topic) {
 
   if (isLink) {
     el.href = topic.href;
-  } else {
+  } else if (!isPerlin) {
     el.type = "button";
     if (isChibi) {
       el.title = topic.imageAlt || "Chibi";
@@ -105,7 +118,10 @@ function createTile(topic) {
       topic.status || (topic.ready ? "Bereit" : "Bald verfügbar");
     const iconSrc = escapeHtml(topic.icon);
     el.innerHTML = `
-      <span class="tile__icon" aria-hidden="true">
+      ${
+        isPerlin
+          ? ""
+          : `<span class="tile__icon" aria-hidden="true">
         <img
           class="tile__pictogram"
           src="${iconSrc}"
@@ -119,8 +135,18 @@ function createTile(topic) {
         <span class="tile__title">${escapeHtml(topic.title)}</span>
         <span class="tile__subtitle">${escapeHtml(topic.subtitle)}</span>
       </span>
-      <span class="tile__status">${escapeHtml(statusText)}</span>
+      <span class="tile__status">${escapeHtml(statusText)}</span>`
+      }
     `;
+    if (isPerlin) {
+      const preview = document.createElement("figure");
+      preview.className = "tile__preview";
+      preview.setAttribute("aria-hidden", "true");
+      preview.appendChild(
+        window.TeslaPerlin.createChart({ animate: true, height: 420 })
+      );
+      el.appendChild(preview);
+    }
     if (topic.highlightImage) {
       el.insertAdjacentHTML(
         "beforeend",
