@@ -475,6 +475,33 @@ body.night-mode .photo-lightbox__caption {
 .tile--monitor .tile__status {
   font-size: clamp(1.25rem, 2.4vw, 1.55rem);
   font-variant-numeric: tabular-nums;
+  border-top: 0;
+}
+
+.tile--monitor .tile__icon,
+.tile--monitor .tile__body,
+.tile--monitor .tile__status {
+  position: relative;
+  z-index: 1;
+}
+
+.tile__preview--monitor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  pointer-events: none;
+}
+
+.tile__preview--monitor .perlin-chart {
+  color: #d6d6d6;
+}
+
+.tile__preview--monitor .perlin-chart__point {
+  fill: #d6d6d6;
+  stroke: var(--bg-tile);
 }
 
 /* —— Light: Farbkreis + Helligkeit (eine Kachel für alle Streifen) —— */

@@ -29,6 +29,7 @@
     samples = 240,
     animate = false,
     speed = 0.45,
+    showAxis = true,
   } = {}) {
     const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -36,13 +37,16 @@
     svg.setAttribute("aria-label", "Liniengrafik einer 1D-Perlin-Noise-Funktion");
     svg.classList.add("perlin-chart");
 
-    const axis = document.createElementNS(SVG_NS, "line");
-    axis.setAttribute("class", "perlin-chart__axis");
-    axis.setAttribute("x1", "0");
-    axis.setAttribute("x2", String(width));
-    axis.setAttribute("y1", String(height / 2));
-    axis.setAttribute("y2", String(height / 2));
-    svg.appendChild(axis);
+    let axis = null;
+    if (showAxis) {
+      axis = document.createElementNS(SVG_NS, "line");
+      axis.setAttribute("class", "perlin-chart__axis");
+      axis.setAttribute("x1", "0");
+      axis.setAttribute("x2", String(width));
+      axis.setAttribute("y1", String(height / 2));
+      axis.setAttribute("y2", String(height / 2));
+      svg.appendChild(axis);
+    }
 
     const line = document.createElementNS(SVG_NS, "polyline");
     line.setAttribute("class", "perlin-chart__line");
@@ -80,9 +84,11 @@
       chartWidth = bounds.width;
       chartHeight = bounds.height;
       svg.setAttribute("viewBox", `0 0 ${chartWidth} ${chartHeight}`);
-      axis.setAttribute("x2", String(chartWidth));
-      axis.setAttribute("y1", String(chartHeight / 2));
-      axis.setAttribute("y2", String(chartHeight / 2));
+      if (axis) {
+        axis.setAttribute("x2", String(chartWidth));
+        axis.setAttribute("y1", String(chartHeight / 2));
+        axis.setAttribute("y2", String(chartHeight / 2));
+      }
       draw(currentOffset);
     }
 

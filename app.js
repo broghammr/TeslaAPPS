@@ -155,6 +155,19 @@ function createTile(topic) {
       );
       el.appendChild(preview);
     }
+    if (isMonitor) {
+      const preview = document.createElement("figure");
+      preview.className = "tile__preview tile__preview--monitor";
+      preview.setAttribute("aria-hidden", "true");
+      preview.appendChild(
+        window.TeslaPerlin.createChart({
+          animate: true,
+          height: 420,
+          showAxis: false,
+        })
+      );
+      el.appendChild(preview);
+    }
     if (isMetaballs) {
       const canvas = document.createElement("canvas");
       canvas.className = "metaballs-canvas";
