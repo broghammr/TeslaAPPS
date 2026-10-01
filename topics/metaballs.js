@@ -16,6 +16,8 @@
       { x: 0.18, y: 0.72, radius: 0.065, speed: 0.92, phase: 4.2 },
     ];
     const accent = { red: 0, green: 112, blue: 243 };
+    const lightBase = { red: 255, green: 255, blue: 255 };
+    const darkBase = { red: 31, green: 31, blue: 31 };
     let width = 0;
     let height = 0;
     let pixels;
@@ -51,6 +53,9 @@
     function draw(time) {
       if (!pixels || !width || !height) return;
 
+      const base = document.body.classList.contains("night-mode")
+        ? darkBase
+        : lightBase;
       const seconds = time / 1000;
       const image = pixels.data;
       const activeBalls = balls.map((ball) => {
@@ -82,12 +87,14 @@
           const edge = smoothstep(0.82, 1.12, field);
           const glow = Math.min(1, field * 0.055);
           const intensity = Math.max(edge, glow * 0.65);
-          image[pixelIndex] = Math.round(255 - (255 - accent.red) * intensity);
+          image[pixelIndex] = Math.round(
+            base.red + (accent.red - base.red) * intensity
+          );
           image[pixelIndex + 1] = Math.round(
-            255 - (255 - accent.green) * intensity
+            base.green + (accent.green - base.green) * intensity
           );
           image[pixelIndex + 2] = Math.round(
-            255 - (255 - accent.blue) * intensity
+            base.blue + (accent.blue - base.blue) * intensity
           );
           image[pixelIndex + 3] = 255;
           pixelIndex += 4;
@@ -118,6 +125,8 @@
       }
     }
 
+    canvas.redrawMetaballs = () => draw(0);
+
     resize();
     if (typeof ResizeObserver === "function") {
       const observer = new ResizeObserver(resize);
@@ -138,6 +147,27 @@
     document
       .querySelectorAll(".metaballs-canvas")
       .forEach(initializeCanvas);
+  }
+
+  const darkMode = window.matchMedia
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
+  const applyTheme = (isDark) => {
+    document.body.classList.toggle("night-mode", isDark);
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute("content", isDark ? "#111111" : "#ffffff");
+    document.querySelectorAll(".metaballs-canvas").forEach((canvas) => {
+      canvas.redrawMetaballs?.();
+    });
+  };
+
+  if (darkMode) {
+    applyTheme(darkMode.matches);
+    if (typeof darkMode.addEventListener === "function") {
+      darkMode.addEventListener("change", (event) => applyTheme(event.matches));
+    } else if (typeof darkMode.addListener === "function") {
+      darkMode.addListener((event) => applyTheme(event.matches));
+    }
   }
 
   window.TeslaMetaballs = Object.freeze({ initializeCanvas, initializeAll });

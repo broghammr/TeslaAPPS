@@ -699,6 +699,15 @@ body.night-mode .photo-lightbox__caption {
   stroke-width: 3;
 }
 
+body.night-mode .perlin-chart {
+  color: #666666;
+}
+
+body.night-mode .perlin-chart__point {
+  fill: #555555;
+  stroke: var(--bg-tile);
+}
+
 .perlin-page {
   overflow: hidden;
 }
@@ -739,7 +748,7 @@ body.night-mode .photo-lightbox__caption {
   padding: 0;
   overflow: hidden;
   cursor: default;
-  background: #ffffff;
+  background: var(--bg-tile);
   border-color: var(--border);
 }
 
@@ -756,7 +765,7 @@ body.night-mode .photo-lightbox__caption {
 .tile--perlin:hover,
 .tile--perlin:focus-visible,
 .tile--perlin:active {
-  background: #ffffff;
+  background: var(--bg-tile);
   border-color: var(--accent);
   box-shadow: var(--shadow-hover);
   transform: none;
@@ -804,20 +813,20 @@ body.night-mode .photo-lightbox__caption {
   overflow: hidden;
   isolation: isolate;
   cursor: default;
-  background: #ffffff;
+  background: var(--bg-tile);
   border-color: var(--border);
 }
 
 .tile--metaballs:hover,
 .tile--metaballs:focus-visible {
-  background: #ffffff;
+  background: var(--bg-tile);
   border-color: var(--accent);
   box-shadow: var(--shadow-hover);
   transform: none;
 }
 
 .tile--metaballs:active {
-  background: #ffffff;
+  background: var(--bg-tile);
   transform: none;
 }
 
