@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111">
+<title>Tesla Browser / Viewport Test</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:#111; color:#eee;
+    font-family: Arial, Helvetica, sans-serif; }
+  body { padding:20px; }
+  h1 { margin:0 0 8px; font-size:28px; }
+  .sub { color:#aaa; margin-bottom:18px; }
+  .hero { padding:18px; border:2px solid #555; border-radius:14px; margin-bottom:16px; }
+  .big { font-size:36px; font-weight:bold; }
+  .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .card { background:#1b1b1b; border:1px solid #444; border-radius:10px; padding:12px; }
+  .label { color:#aaa; font-size:13px; margin-bottom:5px; }
+  .value { font-family:Consolas,monospace; font-size:17px; word-break:break-word; }
+  table { width:100%; border-collapse:collapse; margin-top:16px; }
+  td { border-bottom:1px solid #333; padding:9px 4px; vertical-align:top; }
+  td:first-child { color:#aaa; width:42%; }
+  button { margin-top:16px; padding:14px 18px; font-size:18px; border-radius:9px;
+    border:1px solid #777; background:#292929; color:white; }
+  #log { white-space:pre-wrap; font-family:Consolas,monospace; font-size:13px;
+    color:#bbb; margin-top:12px; }
+</style>
+</head>
+<body>
+<h1>Tesla Browser Test</h1>
+<div class="sub">Viewport / DPR / Browser / WebGL – Werte werden live aktualisiert.</div>
+
+<div class="hero">
+  <div class="label">LAYOUT VIEWPORT</div>
+  <div class="big" id="viewport">–</div>
+</div>
+
+<div class="grid">
+  <div class="card"><div class="label">devicePixelRatio</div><div class="value" id="dpr">–</div></div>
+  <div class="card"><div class="label">Visual Viewport</div><div class="value" id="visual">–</div></div>
+  <div class="card"><div class="label">Screen</div><div class="value" id="screen">–</div></div>
+  <div class="card"><div class="label">HTML client</div><div class="value" id="client">–</div></div>
+</div>
+
+<table>
+<tbody id="rows"></tbody>
+</table>
+
+<button onclick="copyResults()">Ergebnisse kopieren</button>
+<div id="log"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function safe(fn, fallback="nicht verfügbar") {
+  try { const v = fn(); return v == null ? fallback : String(v); }
+  catch(e) { return fallback; }
+}
+
+function webglInfo() {
+  try {
+    const c = document.createElement("canvas");
+    const gl = c.getContext("webgl") || c.getContext("experimental-webgl");
+    if (!gl) return "WebGL nicht verfügbar";
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    if (!ext) return "Renderer verborgen";
+    return gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+  } catch(e) { return "nicht verfügbar"; }
+}
+
+function mediaQueries() {
+  const q = [
+    ["hover:hover","Hover"],
+    ["pointer:coarse","Pointer coarse"],
+    ["pointer:fine","Pointer fine"],
+    ["any-pointer:coarse","Any pointer coarse"],
+    ["any-hover:hover","Any hover"],
+    ["orientation:landscape","Landscape"],
+    ["resolution: 1dppx","1 DPR"],
+    ["resolution: 1.5dppx","1.5 DPR"],
+    ["resolution: 2dppx","2 DPR"]
+  ];
+  return q.map(x => x[0] + " = " + matchMedia("("+x[0]+")").matches).join(" | ");
+}
+
+function update() {
+  const vv = window.visualViewport;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const dpr = window.devicePixelRatio;
+
+  $("viewport").textContent = `${w} × ${h} CSS px`;
+  $("dpr").textContent = dpr;
+  $("visual").textContent = vv
+    ? `${vv.width.toFixed(2)} × ${vv.height.toFixed(2)} CSS px, scale ${vv.scale}`
+    : "nicht verfügbar";
+  $("screen").textContent = `${screen.width} × ${screen.height} CSS px`;
+  $("client").textContent =
+    `${document.documentElement.clientWidth} × ${document.documentElement.clientHeight} CSS px`;
+
+  const rows = [
+    ["window.innerWidth / innerHeight", `${w} × ${h}`],
+    ["window.outerWidth / outerHeight", `${window.outerWidth} × ${window.outerHeight}`],
+    ["screen.width / height", `${screen.width} × ${screen.height}`],
+    ["screen.availWidth / availHeight", `${screen.availWidth} × ${screen.availHeight}`],
+    ["devicePixelRatio", dpr],
+    ["documentElement.clientWidth / clientHeight",
+      `${document.documentElement.clientWidth} × ${document.documentElement.clientHeight}`],
+    ["documentElement.scrollWidth / scrollHeight",
+      `${document.documentElement.scrollWidth} × ${document.documentElement.scrollHeight}`],
+    ["visualViewport.width / height",
+      vv ? `${vv.width.toFixed(2)} × ${vv.height.toFixed(2)}` : "nicht verfügbar"],
+    ["visualViewport.scale", vv ? vv.scale : "nicht verfügbar"],
+    ["visualViewport.offsetLeft / offsetTop",
+      vv ? `${vv.offsetLeft} / ${vv.offsetTop}` : "nicht verfügbar"],
+    ["orientation", safe(() => screen.orientation.type)],
+    ["orientation angle", safe(() => screen.orientation.angle)],
+    ["navigator.userAgent", navigator.userAgent],
+    ["navigator.platform", navigator.platform],
+    ["navigator.vendor", navigator.vendor],
+    ["language", navigator.language],
+    ["languages", navigator.languages ? navigator.languages.join(", ") : ""],
+    ["maxTouchPoints", navigator.maxTouchPoints],
+    ["hardwareConcurrency", navigator.hardwareConcurrency],
+    ["WebGL Renderer", webglInfo()],
+    ["CSS Media Queries", mediaQueries()],
+    ["CSS env(safe-area-inset-left)",
+      safe(() => getComputedStyle(document.documentElement).getPropertyValue("padding-left"))],
+    ["device memory", safe(() => navigator.deviceMemory + " GB")],
+    ["Online", navigator.onLine],
+    ["URL", location.href],
+    ["Timestamp", new Date().toISOString()]
+  ];
+
+  $("rows").innerHTML = rows.map(r =>
+    `<tr><td>${escapeHtml(r[0])}</td><td class="value">${escapeHtml(String(r[1]))}</td></tr>`
+  ).join("");
+
+  window._results = rows.map(r => `${r[0]}: ${r[1]}`).join("\\n");
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+async function copyResults() {
+  try {
+    await navigator.clipboard.writeText(window._results || "");
+    $("log").textContent = "✓ Ergebnisse in die Zwischenablage kopiert.";
+  } catch(e) {
+    $("log").textContent = "Kopieren nicht erlaubt. Bitte Werte direkt ablesen.";
+  }
+}
+
+update();
+window.addEventListener("resize", update);
+window.addEventListener("orientationchange", update);
+if (window.visualViewport) {
+  visualViewport.addEventListener("resize", update);
+  visualViewport.addEventListener("scroll", update);
+}
+setInterval(update, 2000);
+</script>
+</body>
+</html>
