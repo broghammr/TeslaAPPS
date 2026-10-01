@@ -61,16 +61,23 @@ const TOPICS = [
     ready: true,
     status: "Live-Noise",
   },
+  {
+    id: "metaballs",
+    title: "Metaballs",
+    kind: "metaballs",
+    ready: true,
+  },
 ];
 
 function createTile(topic) {
   const isImageTile = Boolean(topic.image);
   const isMonitor = topic.kind === "monitor";
   const isPerlin = topic.kind === "perlin";
+  const isMetaballs = topic.kind === "metaballs";
   const isChibi = topic.kind === "chibi";
   const isLink = Boolean(topic.ready && topic.href && !isMonitor && !isChibi);
   const el = document.createElement(
-    isLink ? "a" : isPerlin ? "div" : "button"
+    isLink ? "a" : isPerlin || isMetaballs ? "div" : "button"
   );
   el.className =
     "tile" +
@@ -78,6 +85,7 @@ function createTile(topic) {
     (isImageTile ? " tile--image" : "") +
     (isMonitor ? " tile--monitor" : "") +
     (isPerlin ? " tile--perlin" : "") +
+    (isMetaballs ? " tile--metaballs-preview" : "") +
     (isChibi ? " tile--chibi" : "") +
     (topic.highlightImage ? " tile--has-highlight" : "");
   el.setAttribute("role", "listitem");
@@ -85,7 +93,7 @@ function createTile(topic) {
 
   if (isLink) {
     el.href = topic.href;
-  } else if (!isPerlin) {
+  } else if (!isPerlin && !isMetaballs) {
     el.type = "button";
     if (isChibi) {
       el.title = topic.imageAlt || "Chibi";
@@ -119,7 +127,7 @@ function createTile(topic) {
     const iconSrc = escapeHtml(topic.icon);
     el.innerHTML = `
       ${
-        isPerlin
+        isPerlin || isMetaballs
           ? ""
           : `<span class="tile__icon" aria-hidden="true">
         <img
@@ -146,6 +154,12 @@ function createTile(topic) {
         window.TeslaPerlin.createChart({ animate: true, height: 420 })
       );
       el.appendChild(preview);
+    }
+    if (isMetaballs) {
+      const canvas = document.createElement("canvas");
+      canvas.className = "metaballs-canvas";
+      canvas.setAttribute("aria-label", "Animierte blaue Metaballs");
+      el.appendChild(canvas);
     }
     if (topic.highlightImage) {
       el.insertAdjacentHTML(

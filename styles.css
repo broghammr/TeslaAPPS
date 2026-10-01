@@ -734,6 +734,22 @@ body.night-mode .photo-lightbox__caption {
   transform: none;
 }
 
+.tile--metaballs-preview {
+  min-height: 240px;
+  padding: 0;
+  cursor: default;
+  background: #ffffff;
+  border-color: var(--border);
+}
+
+.tile--metaballs-preview:hover,
+.tile--metaballs-preview:focus-visible {
+  background: #ffffff;
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+  transform: none;
+}
+
 .metaballs-canvas {
   display: block;
   position: absolute;
