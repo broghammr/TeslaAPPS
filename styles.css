@@ -699,6 +699,69 @@ body.night-mode .photo-lightbox__caption {
   stroke-width: 3;
 }
 
+.perlin-page {
+  overflow: hidden;
+}
+
+.perlin-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 100vh;
+}
+
+.perlin-page-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.perlin-hub,
+.perlin-grid {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.perlin-grid {
+  width: 100%;
+}
+
+.tile--perlin {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  cursor: default;
+  background: #ffffff;
+  border-color: var(--border);
+}
+
+.tile--perlin .tile__preview {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  pointer-events: none;
+}
+
+.tile--perlin:hover,
+.tile--perlin:focus-visible,
+.tile--perlin:active {
+  background: #ffffff;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
+  transform: none;
+}
+
 /* —— Metaballs: eigenständige Vollbild-Kachel —— */
 .metaballs-page {
   overflow: hidden;
@@ -800,6 +863,15 @@ body.night-mode .photo-lightbox__caption {
   justify-content: center;
 }
 
+.tile--scenes .scene-metaballs {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.42;
+  pointer-events: none;
+}
+
 .tile--scenes:hover,
 .tile--scenes:focus-visible {
   background: var(--bg-tile);
@@ -819,6 +891,8 @@ body.night-mode .photo-lightbox__caption {
 }
 
 .scene-rows {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
@@ -843,7 +917,7 @@ body.night-mode .photo-lightbox__caption {
   letter-spacing: -0.02em;
   line-height: 1.2;
   color: var(--text-muted);
-  background: var(--bg-tile);
+  background: color-mix(in srgb, var(--bg-tile) 88%, transparent);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -982,4 +1056,12 @@ body.night-mode .photo-lightbox__caption {
   .tile:active {
     transform: none;
   }
+}
+
+/* Einheitlicher Hover-Effekt für alle Kacheln. */
+.tile:hover {
+  background: var(--bg-tile-hover);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
 }

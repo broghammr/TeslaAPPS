@@ -339,8 +339,10 @@ function createScenesTile() {
   sceneTileRoot = el;
 
   el.innerHTML = `
+    <canvas class="metaballs-canvas scene-metaballs" aria-hidden="true"></canvas>
     <div class="scene-rows" role="group" aria-label="Lichtszenen"></div>
   `;
+  window.TeslaMetaballs?.initializeCanvas(el.querySelector(".scene-metaballs"));
 
   const list = el.querySelector(".scene-rows");
   for (const spec of SCENES) {

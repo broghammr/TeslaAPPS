@@ -134,9 +134,13 @@
     updateAnimation();
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function initializeAll() {
     document
       .querySelectorAll(".metaballs-canvas")
       .forEach(initializeCanvas);
-  });
+  }
+
+  window.TeslaMetaballs = Object.freeze({ initializeCanvas, initializeAll });
+
+  document.addEventListener("DOMContentLoaded", initializeAll);
 })();

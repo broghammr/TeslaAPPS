@@ -52,21 +52,6 @@ const TOPICS = [
     imageAlt: "Chibi: Startanimation starten",
     ready: true,
   },
-  {
-    id: "perlin-noise",
-    title: "Perlin Noise",
-    subtitle: "Testing only",
-    icon: ICONS.helloWorld,
-    kind: "perlin",
-    ready: true,
-    status: "Live-Noise",
-  },
-  {
-    id: "metaballs",
-    title: "Metaballs",
-    kind: "metaballs",
-    ready: true,
-  },
 ];
 
 function createTile(topic) {
