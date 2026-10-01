@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Ulam-Spirale der Primzahlen" />
+    <title>Ulam-Spirale</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body class="ulam-page">
+    <div class="app ulam-app">
+      <h1 class="ulam-page-title">Ulam-Spirale der Primzahlen</h1>
+      <main class="hub ulam-hub">
+        <div class="tile-grid ulam-grid" role="list">
+          <section class="tile tile--ulam" role="listitem" aria-labelledby="ulam-title">
+            <h2 id="ulam-title" class="visually-hidden">Ulam-Spirale der Primzahlen</h2>
+            <canvas id="ulam-canvas" class="ulam-canvas" aria-label="Ulam-Spirale von 0 bis 399; Primzahlen ab 310 sind beschriftet"></canvas>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script src="ulam-spiral.js"></script>
+  </body>
+</html>

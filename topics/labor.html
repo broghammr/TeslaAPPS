@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="broghammr's Labor" />
+    <title>broghammr's Labor</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body class="test-gallery-page">
+    <div class="app test-gallery-app">
+      <h1 class="page-title">
+        <a
+          class="page-title--link"
+          href="../index.html"
+          title="Zum Main Hub"
+          aria-label="Zurück zum Main Hub: Elon's World"
+          >Elon's World ;-)</a
+        >
+        <span class="page-title__topic">broghammr's Labor</span>
+      </h1>
+      <main class="hub">
+        <div class="tile-grid test-gallery-grid" role="list">
+          <button class="tile test-gallery-tile" type="button" role="listitem" data-title="Perlin Noise" data-page="perlin-noise.html" aria-haspopup="dialog">
+            <figure class="test-gallery-visual" id="test-perlin-chart" aria-hidden="true"></figure>
+            <span class="tile__status test-gallery-status">Perlin Noise</span>
+          </button>
+          <button class="tile test-gallery-tile" type="button" role="listitem" data-title="Metaballs" data-page="metaballs.html" aria-haspopup="dialog">
+            <span class="test-gallery-visual" aria-hidden="true">
+              <div class="metaballs-glow"></div>
+              <canvas class="metaballs-canvas"></canvas>
+            </span>
+            <span class="tile__status test-gallery-status">Metaballs</span>
+          </button>
+          <button class="tile test-gallery-tile" type="button" role="listitem" data-title="Ulam-Spirale" data-page="ulam-spiral.html" aria-haspopup="dialog">
+            <span class="test-gallery-visual" aria-hidden="true">
+              <canvas class="ulam-canvas"></canvas>
+            </span>
+            <span class="tile__status test-gallery-status">Ulam-Spirale</span>
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <dialog class="test-gallery-viewer" aria-label="Testseite in Vollbildansicht">
+      <iframe class="test-gallery-fullscreen" title=""></iframe>
+    </dialog>
+    <script src="../perlin-noise.js"></script>
+    <script src="metaballs.js"></script>
+    <script src="ulam-spiral.js"></script>
+    <script src="labor.js"></script>
+  </body>
+</html>

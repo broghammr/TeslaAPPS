@@ -866,6 +866,143 @@ body.night-mode .perlin-chart__point {
   pointer-events: none;
 }
 
+/* Ulam-Spirale: eigenständige Vollbild-Testseite */
+.ulam-page {
+  overflow: hidden;
+}
+
+.ulam-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 100vh;
+}
+
+.ulam-page-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ulam-hub,
+.ulam-grid {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.ulam-grid {
+  width: 100%;
+}
+
+.tile--ulam {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  cursor: default;
+  background: var(--bg-tile);
+  border-color: var(--border);
+}
+
+.tile--ulam:hover,
+.tile--ulam:focus-visible,
+.tile--ulam:active {
+  background: var(--bg-tile);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
+  transform: none;
+}
+
+.ulam-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Galerie der visuellen Testseiten */
+.test-gallery-app {
+  max-width: 1400px;
+}
+
+.test-gallery-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+
+.test-gallery-tile {
+  min-height: 320px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.test-gallery-visual {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: none;
+}
+
+.test-gallery-visual .perlin-chart {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.test-gallery-status {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.test-gallery-viewer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: var(--bg);
+}
+
+.test-gallery-viewer::backdrop {
+  background: var(--bg);
+}
+
+.test-gallery-fullscreen {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
+}
+
 /* Szenen: eine Licht-Kachel, vier Namenszeilen */
 .tile--scenes {
   cursor: default;
