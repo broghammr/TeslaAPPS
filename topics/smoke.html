@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Animierte Rauchentwicklung" />
+    <title>Rauchentwicklung</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body class="smoke-page">
+    <div class="app smoke-app">
+      <h1 class="smoke-page-title">Rauchentwicklung</h1>
+      <main class="hub smoke-hub">
+        <div class="tile-grid smoke-grid" role="list">
+          <section class="tile tile--smoke" role="listitem" aria-labelledby="smoke-title">
+            <h2 id="smoke-title" class="visually-hidden">Animierte Rauchentwicklung</h2>
+            <canvas class="smoke-canvas" aria-label="Sanft aufsteigende Rauchwolken"></canvas>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script src="smoke.js"></script>
+  </body>
+</html>
