@@ -11,6 +11,9 @@
 
     const particles = [];
     const lifetime = 7.5;
+    const originX = canvas.classList.contains("smoke-canvas--light-tile")
+      ? 2 / 3
+      : 0.5;
     let width = 0;
     let height = 0;
     let pixelRatio = 1;
@@ -48,7 +51,7 @@
       const progress = particle.age / particle.life;
       const rise = Math.min(1, progress * 1.12);
       const scale = Math.min(width, height);
-      const x = width * (0.5 + particle.offset + particle.drift * progress +
+      const x = width * (originX + particle.offset + particle.drift * progress +
         Math.sin(elapsed * 0.48 + particle.phase + progress * 3) * 0.045);
       const y = height * (1.02 - rise * 0.9);
       const radius = scale * (particle.size + progress * 0.19);

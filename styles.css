@@ -992,6 +992,17 @@ body.night-mode .perlin-chart__point {
   pointer-events: none;
 }
 
+.tile--smoke-background .smoke-canvas {
+  z-index: 0;
+}
+
+.tile--smoke-background .tile__icon,
+.tile--smoke-background .tile__body,
+.tile--smoke-background .tile__status {
+  position: relative;
+  z-index: 1;
+}
+
 /* Galerie der visuellen Testseiten */
 .test-gallery-app {
   max-width: 1400px;

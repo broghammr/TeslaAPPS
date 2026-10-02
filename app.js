@@ -57,6 +57,7 @@ const TOPICS = [
 function createTile(topic) {
   const isImageTile = Boolean(topic.image);
   const isMonitor = topic.kind === "monitor";
+  const isLight = topic.id === "light";
   const isPerlin = topic.kind === "perlin";
   const isMetaballs = topic.kind === "metaballs";
   const isChibi = topic.kind === "chibi";
@@ -68,6 +69,7 @@ function createTile(topic) {
     "tile" +
     (!topic.ready && !isImageTile ? " tile--soon" : "") +
     (isImageTile ? " tile--image" : "") +
+    (isLight ? " tile--smoke-background" : "") +
     (isMonitor ? " tile--monitor" : "") +
     (isPerlin ? " tile--perlin" : "") +
     (isMetaballs ? " tile--metaballs-preview" : "") +
@@ -131,6 +133,12 @@ function createTile(topic) {
       <span class="tile__status">${escapeHtml(statusText)}</span>`
       }
     `;
+    if (isLight) {
+      const smokeCanvas = document.createElement("canvas");
+      smokeCanvas.className = "smoke-canvas smoke-canvas--light-tile";
+      smokeCanvas.setAttribute("aria-hidden", "true");
+      el.prepend(smokeCanvas);
+    }
     if (isPerlin) {
       const preview = document.createElement("figure");
       preview.className = "tile__preview";
