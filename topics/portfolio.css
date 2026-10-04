@@ -57,14 +57,6 @@
   stroke-width: 1;
 }
 
-.portfolio-chart__line {
-  fill: none;
-  stroke: var(--accent);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 4;
-}
-
 .portfolio-chart__point {
   fill: var(--accent);
   stroke: var(--bg-tile);

@@ -227,7 +227,7 @@ function createPortfolioTile(topic) {
     </div>
     <figure class="portfolio-chart-wrap">
       <svg
-        class="portfolio-chart"
+        class="portfolio-chart perlin-chart"
         id="portfolio-chart"
         role="img"
         aria-label="Liniendiagramm der monatlichen Kryptoportfolio-Werte"

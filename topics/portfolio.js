@@ -121,6 +121,7 @@ function renderPortfolio(history) {
 function drawChart(history) {
   const svg = document.getElementById("portfolio-chart");
   svg.replaceChildren();
+  const points = [];
 
   const values = history.map((point) => point.value);
   const minValue = Math.min(...values);
@@ -147,20 +148,47 @@ function drawChart(history) {
   const line = history
     .map((point, index) => `${index === 0 ? "M" : "L"} ${x(index)} ${y(point.value)}`)
     .join(" ");
-  svg.appendChild(svgElement("path", { d: line, class: "portfolio-chart__line" }));
+  svg.appendChild(svgElement("path", {
+    d: line,
+    class: "perlin-chart__line portfolio-chart__line",
+    "vector-effect": "non-scaling-stroke",
+  }));
 
   history.forEach((point, index) => {
     const circle = svgElement("circle", {
       cx: x(index),
       cy: y(point.value),
-      r: 5,
+      r: 8,
       class: "portfolio-chart__point",
+      "vector-effect": "non-scaling-stroke",
     });
     const title = svgElement("title");
     title.textContent = `${formatMonth(point.time)}: ${formatCurrency(point.value)}`;
     circle.appendChild(title);
     svg.appendChild(circle);
+    points.push(circle);
   });
+
+  const resizePoints = () => {
+    const bounds = svg.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+
+    const scale = Math.min(
+      bounds.width / CHART.width,
+      bounds.height / CHART.height
+    );
+    const radius = 8 / scale;
+    for (const point of points) {
+      point.setAttribute("r", String(radius));
+    }
+  };
+
+  resizePoints();
+  if (typeof ResizeObserver === "function") {
+    new ResizeObserver(resizePoints).observe(svg);
+  } else {
+    window.addEventListener("resize", resizePoints);
+  }
 }
 
 function svgElement(tag, attributes = {}) {
