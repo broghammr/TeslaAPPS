@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f5f5" id="theme-color-meta" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Geschätzte Entwicklung des Kryptoportfolios der letzten zwölf Monate"
+    />
+    <title>Kryptoportfolio – Testseite</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32x32.png" />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="portfolio.css" />
+  </head>
+  <body>
+    <div class="app">
+      <h1 class="page-title">
+        <a
+          class="page-title--link"
+          href="../index.html"
+          title="Zum Main Hub"
+          aria-label="Zurück zum Main Hub"
+          >Elon's World ;-)</a
+        >
+        <span class="page-title__topic">Kryptoportfolio – Testseite</span>
+      </h1>
+      <main class="hub portfolio-hub">
+        <div class="tile-grid portfolio-grid" role="list">
+          <section
+            class="tile portfolio-tile"
+            role="listitem"
+            aria-label="Kryptoportfolio, Werteentwicklung"
+          >
+            <section
+              class="portfolio-results"
+              id="portfolio-results"
+              aria-label="Kryptoportfolio-Werteentwicklung"
+            >
+              <div class="portfolio-summary" aria-live="polite">
+                <span class="tile__icon portfolio-summary__icon" aria-hidden="true">
+                  <img
+                    class="tile__pictogram"
+                    src="../assets/wallet.svg"
+                    alt=""
+                    width="36"
+                    height="36"
+                  />
+                </span>
+                <div>
+                  <span class="portfolio-summary__label">YoY</span>
+                  <strong id="portfolio-change">–</strong>
+                </div>
+              </div>
+              <figure class="portfolio-chart-wrap">
+                <svg
+                  class="portfolio-chart"
+                  id="portfolio-chart"
+                  role="img"
+                  aria-label="Liniendiagramm der geschätzten monatlichen Portfoliowerte"
+                  viewBox="0 0 900 360"
+                  preserveAspectRatio="xMidYMid meet"
+                ></svg>
+              </figure>
+            </section>
+            <p class="portfolio-error" id="portfolio-error" role="alert" hidden></p>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script src="portfolio.js"></script>
+  </body>
+</html>

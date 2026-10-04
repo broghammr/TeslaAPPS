@@ -52,9 +52,16 @@ const TOPICS = [
     href: "topics/labor.html",
     ready: true,
   },
+  {
+    id: "portfolio",
+    title: "Kryptoportfolio",
+    kind: "portfolio",
+  },
 ];
 
 function createTile(topic) {
+  if (topic.kind === "portfolio") return createPortfolioTile(topic);
+
   const isImageTile = Boolean(topic.image);
   const isMonitor = topic.kind === "monitor";
   const isLight = topic.id === "light";
@@ -193,6 +200,44 @@ function createTile(topic) {
   }
 
   return el;
+}
+
+function createPortfolioTile(topic) {
+  const tile = document.createElement("section");
+  tile.className = "tile portfolio-tile";
+  tile.setAttribute("role", "listitem");
+  tile.setAttribute("aria-label", `${topic.title}, Veränderung YoY`);
+  tile.dataset.topicId = topic.id;
+  tile.innerHTML = `
+    <div class="portfolio-summary" aria-live="polite">
+      <span class="tile__icon portfolio-summary__icon" aria-hidden="true">
+        <img
+          class="tile__pictogram"
+          src="assets/wallet.svg"
+          alt=""
+          width="36"
+          height="36"
+          decoding="async"
+        />
+      </span>
+      <div>
+        <span class="portfolio-summary__label">YoY</span>
+        <strong id="portfolio-change">–</strong>
+      </div>
+    </div>
+    <figure class="portfolio-chart-wrap">
+      <svg
+        class="portfolio-chart"
+        id="portfolio-chart"
+        role="img"
+        aria-label="Liniendiagramm der monatlichen Kryptoportfolio-Werte"
+        viewBox="0 0 900 360"
+        preserveAspectRatio="xMidYMid meet"
+      ></svg>
+    </figure>
+    <p class="portfolio-error" id="portfolio-error" role="alert" hidden></p>
+  `;
+  return tile;
 }
 
 function formatCelsius(value) {

@@ -1,0 +1,86 @@
+.portfolio-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.portfolio-tile {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.portfolio-results {
+  width: 100%;
+}
+
+.portfolio-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  width: 100%;
+}
+
+.portfolio-summary__icon {
+  margin: 0 auto 0 0;
+}
+
+.portfolio-summary > div {
+  display: grid;
+  gap: 0.25rem;
+  text-align: right;
+}
+
+.portfolio-summary__label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.portfolio-summary strong {
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.portfolio-chart-wrap {
+  width: 100%;
+  margin: 1rem 0 0;
+}
+
+.portfolio-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.portfolio-chart__grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.portfolio-chart__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.portfolio-chart__point {
+  fill: var(--accent);
+  stroke: var(--bg-tile);
+  stroke-width: 3;
+}
+
+.portfolio-error {
+  margin: 1rem 0 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .portfolio-tile {
+    padding: 1.1rem;
+  }
+
+}
