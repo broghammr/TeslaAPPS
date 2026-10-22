@@ -105,6 +105,15 @@
         line-height: 1;
       }
 
+      .speed-compass__altitude {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--text-muted);
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+
       .speed-value {
         position: absolute;
         inset: 0;
@@ -158,6 +167,7 @@
                 <path d="M12 2 L19 21 L12 17 L5 21 Z"></path>
               </svg>
               <span class="speed-compass__label" id="heading-label">–</span>
+              <span class="speed-compass__altitude" id="altitude-label">–</span>
             </div>
             <p class="speed-value" id="speed-value">
               <span id="speed-number">–</span><span class="speed-value__unit">km/h</span>
