@@ -85,7 +85,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   navigator.geolocation.watchPosition(updatePosition, handleError, {
     enableHighAccuracy: true,
-    maximumAge: 1000,
-    timeout: 10000,
+    maximumAge: 60000,
   });
 });
