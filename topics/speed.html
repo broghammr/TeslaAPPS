@@ -7,7 +7,7 @@
     <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
-      content="Speed – Aktuelle Geschwindigkeit im Tesla Browser"
+      content="Speed – Aktuelle Geschwindigkeit und Fahrtrichtung im Tesla Browser"
     />
     <title>Speed – Geschwindigkeit</title>
     <link rel="icon" href="../favicon.ico" sizes="any" />
@@ -18,6 +18,127 @@
     <link rel="apple-touch-icon" sizes="152x152" href="../assets/apple-touch-icon-152x152.png" />
     <link rel="apple-touch-icon" sizes="120x120" href="../assets/apple-touch-icon-120x120.png" />
     <link rel="stylesheet" href="../styles.css" />
+    <style>
+      .speed-page {
+        overflow: hidden;
+      }
+
+      .speed-app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        min-height: 100vh;
+      }
+
+      .speed-page-title {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .speed-hub,
+      .speed-grid {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .speed-grid {
+        width: 100%;
+      }
+
+      .tile--speed {
+        flex: 1;
+        min-height: 0;
+        padding: 0;
+        overflow: hidden;
+        cursor: default;
+        background: var(--bg-tile);
+        border-color: var(--border);
+        position: relative;
+      }
+
+      .tile--speed:hover,
+      .tile--speed:focus-visible,
+      .tile--speed:active {
+        background: var(--bg-tile);
+        border-color: var(--accent);
+        box-shadow: var(--shadow-hover);
+        transform: none;
+      }
+
+      .speed-compass {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        padding: 0.5rem 0.65rem;
+        border-radius: var(--radius-sm);
+        background: var(--bg-tile);
+        border: 2px solid var(--border);
+        box-shadow: var(--shadow);
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .speed-compass__arrow {
+        width: 1.75rem;
+        height: 1.75rem;
+        color: var(--accent);
+        transition: transform 0.3s ease;
+      }
+
+      .speed-compass__label {
+        font-size: 0.95rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        color: var(--text);
+        line-height: 1;
+      }
+
+      .speed-value {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        font-size: clamp(3.5rem, 16vw, 9rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+        pointer-events: none;
+        text-align: center;
+        padding: 0 1rem;
+      }
+
+      .speed-value__unit {
+        margin-top: 0.5rem;
+        font-size: 0.45em;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
+
+      body.night-mode .speed-compass {
+        background: var(--bg-tile);
+        border-color: var(--border);
+      }
+    </style>
   </head>
   <body class="speed-page">
     <div class="app speed-app">
@@ -34,20 +155,15 @@
       <main class="hub speed-hub">
         <div class="tile-grid speed-grid" role="list">
           <div class="tile tile--speed" role="listitem">
-            <div class="tile__icon" aria-hidden="true">
-              <img
-                class="tile__pictogram"
-                src="../assets/rocket.svg"
-                alt=""
-                width="32"
-                height="32"
-              />
+            <div class="speed-compass" aria-hidden="true">
+              <svg class="speed-compass__arrow" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2 L19 21 L12 17 L5 21 Z"></path>
+              </svg>
+              <span class="speed-compass__label" id="heading-label">–</span>
             </div>
-            <div class="tile__body">
-              <span class="tile__title">Aktuelle Geschwindigkeit</span>
-              <span class="tile__subtitle">über GPS</span>
-            </div>
-            <span class="tile__status" id="speed-value">– km/h</span>
+            <p class="speed-value" id="speed-value">
+              <span id="speed-number">–</span><span class="speed-value__unit">km/h</span>
+            </p>
           </div>
         </div>
       </main>
