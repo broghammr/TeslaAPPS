@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f5f5" id="theme-color-meta" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Speed – Aktuelle Geschwindigkeit im Tesla Browser"
+    />
+    <title>Speed – Geschwindigkeit</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="../assets/apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="../assets/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="../assets/apple-touch-icon-120x120.png" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body class="speed-page">
+    <div class="app speed-app">
+      <h1 class="page-title speed-page-title">
+        <a
+          class="page-title--link"
+          href="../index.html"
+          title="Zum Main Hub"
+          aria-label="Zurück zum Main Hub: Elon's World"
+          >Elon's World ;-)</a
+        >
+        <span class="page-title__topic">Speed</span>
+      </h1>
+      <main class="hub speed-hub">
+        <div class="tile-grid speed-grid" role="list">
+          <div class="tile tile--speed" role="listitem">
+            <div class="tile__icon" aria-hidden="true">
+              <img
+                class="tile__pictogram"
+                src="../assets/rocket.svg"
+                alt=""
+                width="32"
+                height="32"
+              />
+            </div>
+            <div class="tile__body">
+              <span class="tile__title">Aktuelle Geschwindigkeit</span>
+              <span class="tile__subtitle">über GPS</span>
+            </div>
+            <span class="tile__status" id="speed-value">– km/h</span>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="speed.js"></script>
+  </body>
+</html>
