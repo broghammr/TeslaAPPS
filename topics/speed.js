@@ -3,10 +3,12 @@
  * Große Geschwindigkeitsanzeige + Kompass mit Fahrtrichtung.
  * Geschwindigkeit kommt in m/s, wird in km/h umgerechnet.
  * Kurs (heading) in Grad, 0 = Nord.
+ * Höhe über Normalnull in Metern.
  */
 
 const SPEED_NUMBER = document.getElementById("speed-number");
 const HEADING_LABEL = document.getElementById("heading-label");
+const ALTITUDE_LABEL = document.getElementById("altitude-label");
 const COMPASS_ARROW = document.querySelector(".speed-compass__arrow");
 const THEME_META = document.getElementById("theme-color-meta");
 
@@ -25,12 +27,21 @@ function formatHeading(degrees) {
   return HEADINGS[index];
 }
 
+/** Meter → ganze Zahl mit m */
+function formatAltitude(meters) {
+  if (meters === null || meters === undefined || Number.isNaN(meters)) return "–";
+  return `${Math.round(meters)} m`;
+}
+
 function updatePosition(position) {
   if (SPEED_NUMBER) {
     SPEED_NUMBER.textContent = formatSpeedKmh(position.coords.speed);
   }
   if (HEADING_LABEL) {
     HEADING_LABEL.textContent = formatHeading(position.coords.heading);
+  }
+  if (ALTITUDE_LABEL) {
+    ALTITUDE_LABEL.textContent = formatAltitude(position.coords.altitude);
   }
   if (COMPASS_ARROW && position.coords.heading != null && !Number.isNaN(position.coords.heading)) {
     COMPASS_ARROW.style.transform = `rotate(${position.coords.heading}deg)`;
@@ -52,6 +63,7 @@ function handleError(error) {
   }
   if (SPEED_NUMBER) SPEED_NUMBER.textContent = message;
   if (HEADING_LABEL) HEADING_LABEL.textContent = "–";
+  if (ALTITUDE_LABEL) ALTITUDE_LABEL.textContent = "–";
 }
 
 function setupDarkMode() {
