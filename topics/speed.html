@@ -123,6 +123,34 @@
         line-height: 1;
         font-variant-numeric: tabular-nums;
       }
+
+      .speed-value {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        font-size: clamp(3.5rem, 16vw, 9rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+        pointer-events: none;
+        text-align: center;
+        padding: 0 1rem;
+      }
+
+      .speed-value__unit {
+        margin-top: 0.5rem;
+        font-size: 0.45em;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
     </style>
   </head>
   <body class="speed-page">
