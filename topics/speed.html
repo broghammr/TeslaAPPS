@@ -42,20 +42,10 @@
         border: 0;
       }
 
-      .speed-hub,
-      .speed-grid {
+      .speed-hub {
         display: flex;
         flex: 1;
         min-height: 0;
-      }
-
-      .speed-grid {
-        width: 100%;
-        grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-        gap: clamp(1rem, 2.5vw, 1.5rem);
-        list-style: none;
-        margin: 0;
-        padding: var(--space);
       }
 
       .tile--speed {
@@ -178,7 +168,7 @@
         <span class="page-title__topic">Speed</span>
       </h1>
       <main class="hub speed-hub">
-        <div class="tile-grid speed-grid" role="list">
+        <div class="tile-grid" role="list">
           <div class="tile tile--speed" role="listitem">
             <p class="speed-value" id="speed-value">
               <span id="speed-number">–</span><span class="speed-value__unit">km/h</span>
