@@ -1,6 +1,6 @@
 /**
  * Tesla Apps – Thema "Speed"
- * Große Geschwindigkeitsanzeige + Kompass mit Fahrtrichtung.
+ * Zwei Kacheln: große Geschwindigkeitsanzeige + Kompass mit Fahrtrichtung und Höhe.
  * Geschwindigkeit kommt in m/s, wird in km/h umgerechnet.
  * Kurs (heading) in Grad, 0 = Nord.
  * Höhe über Normalnull in Metern.

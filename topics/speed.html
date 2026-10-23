@@ -51,10 +51,14 @@
 
       .speed-grid {
         width: 100%;
+        flex-direction: row;
+        gap: 0.75rem;
+        padding: 0.75rem;
       }
 
       .tile--speed {
         flex: 1;
+        min-width: 0;
         min-height: 0;
         padding: 0;
         overflow: hidden;
@@ -73,32 +77,48 @@
         transform: none;
       }
 
-      .speed-compass {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        z-index: 2;
+      .tile--heading {
+        flex: 0 0 38%;
+        max-width: 16rem;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.15rem;
-        padding: 0.5rem 0.65rem;
-        border-radius: var(--radius-sm);
+        justify-content: center;
+        gap: 0.75rem;
+        cursor: default;
         background: var(--bg-tile);
-        box-shadow: var(--shadow);
+        border-color: var(--border);
+        position: relative;
+      }
+
+      .tile--heading:hover,
+      .tile--heading:focus-visible,
+      .tile--heading:active {
+        background: var(--bg-tile);
+        border-color: var(--accent);
+        box-shadow: var(--shadow-hover);
+        transform: none;
+      }
+
+      .speed-compass {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
         pointer-events: none;
         user-select: none;
       }
 
       .speed-compass__arrow {
-        width: 1.75rem;
-        height: 1.75rem;
+        width: 2.5rem;
+        height: 2.5rem;
         color: var(--accent);
         transition: transform 0.3s ease;
       }
 
       .speed-compass__label {
-        font-size: 0.95rem;
+        font-size: 1.6rem;
         font-weight: 800;
         letter-spacing: 0.04em;
         color: var(--text);
@@ -106,7 +126,7 @@
       }
 
       .speed-compass__altitude {
-        font-size: 0.75rem;
+        font-size: 1rem;
         font-weight: 600;
         letter-spacing: 0.02em;
         color: var(--text-muted);
@@ -141,10 +161,6 @@
         letter-spacing: 0.08em;
         color: var(--text-muted);
       }
-
-      body.night-mode .speed-compass {
-        background: var(--bg-tile);
-      }
     </style>
   </head>
   <body class="speed-page">
@@ -162,6 +178,11 @@
       <main class="hub speed-hub">
         <div class="tile-grid speed-grid" role="list">
           <div class="tile tile--speed" role="listitem">
+            <p class="speed-value" id="speed-value">
+              <span id="speed-number">–</span><span class="speed-value__unit">km/h</span>
+            </p>
+          </div>
+          <div class="tile tile--heading" role="listitem">
             <div class="speed-compass" aria-hidden="true">
               <svg class="speed-compass__arrow" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2 L19 21 L12 17 L5 21 Z"></path>
@@ -169,9 +190,6 @@
               <span class="speed-compass__label" id="heading-label">–</span>
               <span class="speed-compass__altitude" id="altitude-label">–</span>
             </div>
-            <p class="speed-value" id="speed-value">
-              <span id="speed-number">–</span><span class="speed-value__unit">km/h</span>
-            </p>
           </div>
         </div>
       </main>
