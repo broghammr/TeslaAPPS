@@ -91,6 +91,47 @@
         transform: none;
       }
 
+      .tile--weather {
+        min-height: 220px;
+        justify-content: center;
+        gap: 0.65rem;
+        cursor: default;
+      }
+
+      .tile--weather:hover,
+      .tile--weather:focus-visible,
+      .tile--weather:active {
+        background: var(--bg-tile);
+        border-color: var(--border);
+        box-shadow: var(--shadow);
+        transform: none;
+      }
+
+      .weather-tile__title {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      .weather-tile__temperature {
+        font-size: clamp(2.5rem, 8vw, 4rem);
+        font-weight: 800;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .weather-tile__condition {
+        font-size: 1.2rem;
+        font-weight: 700;
+      }
+
+      .weather-tile__location {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        font-variant-numeric: tabular-nums;
+      }
+
       .speed-compass {
         display: flex;
         flex-direction: column;
@@ -181,6 +222,12 @@
               <span class="speed-compass__altitude" id="altitude-label">–</span>
             </div>
           </div>
+          <section class="tile tile--weather" role="listitem" aria-label="Aktuelles Wetter">
+            <h2 class="weather-tile__title">Wetter am Standort</h2>
+            <span class="weather-tile__temperature" id="weather-temperature" aria-live="polite">–</span>
+            <span class="weather-tile__condition" id="weather-condition">Standort wird ermittelt…</span>
+            <span class="weather-tile__location" id="weather-location"></span>
+          </section>
         </div>
       </main>
     </div>
