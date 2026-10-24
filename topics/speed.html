@@ -23,11 +23,46 @@
         overflow: hidden;
       }
 
+      .speed-weather-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        color: var(--text-muted);
+        opacity: 0.11;
+        pointer-events: none;
+      }
+
+      .speed-weather-backdrop svg {
+        width: min(78vw, 1000px);
+        height: min(78vh, 720px);
+        overflow: visible;
+      }
+
+      .speed-weather-backdrop path,
+      .speed-weather-backdrop circle,
+      .speed-weather-backdrop line {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .speed-weather-backdrop circle.weather-sun {
+        fill: currentColor;
+        stroke: none;
+      }
+
       .speed-app {
         display: flex;
         flex-direction: column;
         height: 100vh;
         min-height: 100vh;
+        position: relative;
+        z-index: 1;
       }
 
       .speed-page-title {
@@ -93,18 +128,11 @@
 
       .tile--weather {
         min-height: 220px;
+        align-items: center;
         justify-content: center;
         gap: 0.65rem;
         cursor: default;
-      }
-
-      .tile--weather:hover,
-      .tile--weather:focus-visible,
-      .tile--weather:active {
-        background: var(--bg-tile);
-        border-color: var(--border);
-        box-shadow: var(--shadow);
-        transform: none;
+        text-align: center;
       }
 
       .weather-tile__title {
@@ -115,10 +143,12 @@
       }
 
       .weather-tile__temperature {
+        width: 100%;
         font-size: clamp(2.5rem, 8vw, 4rem);
         font-weight: 800;
         line-height: 1;
         font-variant-numeric: tabular-nums;
+        text-align: center;
       }
 
       .weather-tile__condition {
@@ -195,6 +225,9 @@
     </style>
   </head>
   <body class="speed-page">
+    <div class="speed-weather-backdrop" aria-hidden="true">
+      <svg id="weather-backdrop" viewBox="0 0 400 300"></svg>
+    </div>
     <div class="app speed-app">
       <h1 class="page-title speed-page-title">
         <a

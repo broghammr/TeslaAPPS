@@ -14,6 +14,7 @@ const THEME_META = document.getElementById("theme-color-meta");
 const WEATHER_TEMPERATURE = document.getElementById("weather-temperature");
 const WEATHER_CONDITION = document.getElementById("weather-condition");
 const WEATHER_LOCATION = document.getElementById("weather-location");
+const WEATHER_BACKDROP = document.getElementById("weather-backdrop");
 const WEATHER_REFRESH_INTERVAL = 10 * 60 * 1000;
 let lastWeatherRequest;
 
@@ -47,6 +48,15 @@ const WEATHER_CODES = {
   95: "Gewitter",
   96: "Gewitter mit leichtem Hagel",
   99: "Gewitter mit starkem Hagel",
+};
+const WEATHER_ART = {
+  clear: '<circle class="weather-sun" cx="200" cy="130" r="42"/><path d="M200 28v24M200 208v24M98 130h24M278 130h24M128 58l17 17M255 185l17 17M272 58l-17 17M145 185l-17 17"/>',
+  partlyCloudy: '<circle class="weather-sun" cx="248" cy="83" r="35"/><path d="M248 24v15M248 127v15M189 83h15M292 83h15M207 42l11 11M278 113l11 11M289 42l-11 11"/><path d="M90 196h205a39 39 0 0 0 0-78 58 58 0 0 0-110-12 47 47 0 0 0-95 15 38 38 0 0 0 0 75z"/>',
+  cloudy: '<path d="M70 206h245a45 45 0 0 0 0-90 65 65 0 0 0-122-14 52 52 0 0 0-104 16 44 44 0 0 0-19 88z"/>',
+  rain: '<path d="M70 174h245a45 45 0 0 0 0-90 65 65 0 0 0-122-14 52 52 0 0 0-104 16 44 44 0 0 0-19 88z"/><path d="m120 211-13 34m72-34-13 34m72-34-13 34m72-34-13 34"/>',
+  snow: '<path d="M70 162h245a45 45 0 0 0 0-90 65 65 0 0 0-122-14 52 52 0 0 0-104 16 44 44 0 0 0-19 88z"/><path d="M120 211v34m-15-17h30m-26-11 22 22m0-22-22 22m78-28v34m-15-17h30m-26-11 22 22m0-22-22 22m78-28v34m-15-17h30m-26-11 22 22m0-22-22 22"/>',
+  storm: '<path d="M70 164h245a45 45 0 0 0 0-90 65 65 0 0 0-122-14 52 52 0 0 0-104 16 44 44 0 0 0-19 88z"/><path d="m205 173-34 54h34l-12 48 53-68h-37l18-34"/>',
+  fog: '<path d="M80 140h240a43 43 0 0 0 0-86 62 62 0 0 0-117-13 50 50 0 0 0-99 15 42 42 0 0 0-24 84zM76 190h248M105 232h190"/>',
 };
 
 /** m/s → km/h, ganze Zahl */
@@ -139,16 +149,33 @@ async function loadWeather(latitude, longitude) {
     }
 
     if (WEATHER_TEMPERATURE) {
-      WEATHER_TEMPERATURE.textContent = `${Math.round(temperature)} °C`;
+      WEATHER_TEMPERATURE.textContent = `${Math.round(temperature)}°C`;
     }
     if (WEATHER_CONDITION) {
       WEATHER_CONDITION.textContent = WEATHER_CODES[weatherCode] || "Wetterdaten verfügbar";
     }
+    updateWeatherBackdrop(weatherCode);
   } catch (error) {
     if (lastWeatherRequest !== request) return;
     console.warn("Wetterdaten konnten nicht geladen werden:", error);
     if (WEATHER_CONDITION) WEATHER_CONDITION.textContent = "Wetter nicht verfügbar";
   }
+}
+
+function updateWeatherBackdrop(weatherCode) {
+  if (!WEATHER_BACKDROP) return;
+  let weatherType = "cloudy";
+  if (weatherCode === 0) weatherType = "clear";
+  else if (weatherCode === 1 || weatherCode === 2) weatherType = "partlyCloudy";
+  else if (weatherCode === 45 || weatherCode === 48) weatherType = "fog";
+  else if ((weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82)) {
+    weatherType = "rain";
+  } else if ((weatherCode >= 71 && weatherCode <= 77) || weatherCode === 85 || weatherCode === 86) {
+    weatherType = "snow";
+  } else if (weatherCode >= 95 && weatherCode <= 99) {
+    weatherType = "storm";
+  }
+  WEATHER_BACKDROP.innerHTML = WEATHER_ART[weatherType];
 }
 
 function setupDarkMode() {
