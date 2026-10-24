@@ -12,10 +12,10 @@ const HOLDINGS = [
 const CHART = {
   width: 900,
   height: 360,
-  left: 20,
-  right: 20,
+  left: 32,
+  right: 32,
   top: 18,
-  bottom: 20,
+  bottom: 48,
 };
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -169,6 +169,15 @@ function drawChart(history) {
     points.push(circle);
   });
 
+  history.forEach((point, index) => {
+    svg.appendChild(svgElement("text", {
+      x: x(index),
+      y: CHART.height - 8,
+      class: "portfolio-chart__month",
+      "text-anchor": "middle",
+    })).textContent = formatShortMonth(point.time);
+  });
+
   const resizePoints = () => {
     const bounds = svg.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
@@ -211,6 +220,13 @@ function formatMonth(timestamp) {
   return new Intl.DateTimeFormat("de-DE", {
     month: "short",
     year: "2-digit",
+    timeZone: "UTC",
+  }).format(new Date(timestamp));
+}
+
+function formatShortMonth(timestamp) {
+  return new Intl.DateTimeFormat("de-DE", {
+    month: "short",
     timeZone: "UTC",
   }).format(new Date(timestamp));
 }

@@ -180,11 +180,23 @@ function createTile(topic) {
         `<img
           class="tile__highlight"
           src="${escapeHtml(topic.highlightImage)}"
-          alt=""
+          alt="Speed öffnen"
+          tabindex="0"
+          aria-label="Speed öffnen"
           loading="lazy"
           decoding="async"
         />`
       );
+      const highlight = el.querySelector(".tile__highlight");
+      const openSpeed = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.location.href = "topics/speed.html";
+      };
+      highlight.addEventListener("click", openSpeed);
+      highlight.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") openSpeed(event);
+      });
     }
   }
 

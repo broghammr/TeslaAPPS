@@ -243,7 +243,7 @@ body.night-mode .photo-lightbox__caption {
   z-index: 2;
   width: 5rem;
   height: auto;
-  pointer-events: none;
+  cursor: pointer;
   user-select: none;
 }
 

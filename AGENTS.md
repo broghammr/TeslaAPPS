@@ -44,8 +44,8 @@ Themenkachel "Monitor" (mn)
 * Temparatur wir beim Laden der Seite aktualisiert und bei einem Touch auf die Kachel, kein automatischer Refresh
 
 Themenkachel "Chibi" (cb)
-* Kachellayout zeigt vollflächig assets/chibi.jpg, keine Unterseite
-* Wenn Kachel gedrück wird soll die Startanimation (siehe Projekt Raspi) gestartet werden
+* Die Kachel im Main Hub zeigt assets/chibi.jpg vollflächig und öffnet bei Auswahl die Labor-Galerie unter topics/labor.html
+* Auf der Light-Seite zeigt die Chibi-Kachel ebenfalls assets/chibi.jpg; bei Auswahl startet sie die Startanimation (siehe Projekt Raspi)
 
 Deployment:
 * Deployment über GitHub Pages
@@ -91,5 +91,4 @@ Raspberry Pi "Jacky"
 * Dynamische Lichtszenen
   - Startanimationen, welche die Tesla Startanimation aus dem Sommerupdate 2026 unterstützt, Dauer 30s. WLED Streifen Rücksitzbank, Beifahrer und Lüfter-LEDs dazu verwenden, nicht Sternenhimmel und nicht den Lüftermotor. Ausführung beim Start des Python Skripts (Daemon) und wenn der Taster an GPIO 27 gedrückt wurde.
   - Zusätzliche Loopszenen (Light-Seite, bis Stop oder andere Szene): Regenbogen, grüne funkelnde Sterne, roter Herzschlag, Knight Rider. Gleiche Streifen. API: POST /scene/start name=rainbow|stars|heartbeat|rider, POST /scene/stop.
-
 

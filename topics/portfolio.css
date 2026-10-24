@@ -57,6 +57,13 @@
   stroke-width: 1;
 }
 
+.portfolio-chart__month {
+  fill: var(--text-muted);
+  font-family: var(--font);
+  font-size: 20px;
+  font-weight: 600;
+}
+
 .portfolio-chart__point {
   fill: var(--accent);
   stroke: var(--bg-tile);
