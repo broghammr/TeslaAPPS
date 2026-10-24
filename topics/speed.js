@@ -15,6 +15,7 @@ const WEATHER_TEMPERATURE = document.getElementById("weather-temperature");
 const WEATHER_CONDITION = document.getElementById("weather-condition");
 const WEATHER_LOCATION = document.getElementById("weather-location");
 const WEATHER_BACKDROP = document.getElementById("weather-backdrop");
+const WEATHER_TILE_BACKDROP = document.getElementById("weather-tile-backdrop");
 const WEATHER_REFRESH_INTERVAL = 10 * 60 * 1000;
 let lastWeatherRequest;
 
@@ -163,7 +164,6 @@ async function loadWeather(latitude, longitude) {
 }
 
 function updateWeatherBackdrop(weatherCode) {
-  if (!WEATHER_BACKDROP) return;
   let weatherType = "cloudy";
   if (weatherCode === 0) weatherType = "clear";
   else if (weatherCode === 1 || weatherCode === 2) weatherType = "partlyCloudy";
@@ -175,7 +175,9 @@ function updateWeatherBackdrop(weatherCode) {
   } else if (weatherCode >= 95 && weatherCode <= 99) {
     weatherType = "storm";
   }
-  WEATHER_BACKDROP.innerHTML = WEATHER_ART[weatherType];
+  const artwork = WEATHER_ART[weatherType];
+  if (WEATHER_BACKDROP) WEATHER_BACKDROP.innerHTML = artwork;
+  if (WEATHER_TILE_BACKDROP) WEATHER_TILE_BACKDROP.innerHTML = artwork;
 }
 
 function setupDarkMode() {
