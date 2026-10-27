@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tesla Namespace Probe</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --card: #121826;
+    --text: #e8ecf4;
+    --muted: #8b93a7;
+    --accent: #3ddc97;
+    --warn: #f5a623;
+    --err: #ff5c5c;
+    --ns1: #4fc3f7;
+    --ns2: #ba68c8;
+    --ns3: #ffd54f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+  }
+  .status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+  .status.ok { background: rgba(61,220,151,0.15); color: var(--accent); }
+  .status.partial { background: rgba(245,166,35,0.15); color: var(--warn); }
+  .status.none { background: rgba(255,92,92,0.15); color: var(--err); }
+  .ns-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 28px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ns-title .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .dot.ns1 { background: var(--ns1); }
+  .dot.ns2 { background: var(--ns2); }
+  .dot.ns3 { background: var(--ns3); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 0.92rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  th { color: var(--muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  tr:last-child td { border-bottom: none; }
+  .prop { font-family: 'SF Mono', Menlo, Consolas, monospace; color: var(--text); }
+  .val { font-family: 'SF Mono', Menlo, Consolas, monospace; }
+  .val.num { color: var(--accent); }
+  .val.str { color: var(--ns1); }
+  .val.bool-true { color: var(--accent); }
+  .val.bool-false { color: var(--muted); }
+  .val.null { color: var(--muted); font-style: italic; }
+  .val.err { color: var(--err); }
+  .meta {
+    margin-top: 32px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+  .meta code { font-family: 'SF Mono', Menlo, Consolas, monospace; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Tesla Namespace Probe</h1>
+<p class="sub">Liest alle bekannten Tesla-Browser-Namespaces aus und zeigt live, was in deinem Auto verfügbar ist.</p>
+<div class="status" id="overall">Prüfe Namespaces…</div>
+
+<div class="ns-title"><span class="dot ns1"></span> window.tesla</div>
+<table><thead><tr><th>Eigenschaft</th><th>Wert</th><th>Typ</th></tr></thead><tbody id="tbl-tesla"></tbody></table>
+
+<div class="ns-title"><span class="dot ns2"></span> window.TeslaApp</div>
+<table><thead><tr><th>Eigenschaft</th><th>Wert</th><th>Typ</th></tr></thead><tbody id="tbl-teslaapp"></tbody></table>
+
+<div class="ns-title"><span class="dot ns3"></span> window (flach)</div>
+<table><thead><tr><th>Eigenschaft</th><th>Wert</th><th>Typ</th></tr></thead><tbody id="tbl-flat"></tbody></table>
+
+<div class="ns-title"><span class="dot ns1"></span> Geolocation (watchPosition)</div>
+<table><thead><tr><th>Eigenschaft</th><th>Wert</th><th>Typ</th></tr></thead><tbody id="tbl-geo"></tbody></table>
+
+<div class="ns-title"><span class="dot ns2"></span> navigator.mediaDevices</div>
+<table><thead><tr><th>deviceId</th><th>kind</th><th>label</th></tr></thead><tbody id="tbl-media"></tbody></table>
+
+<p class="meta">
+  Aktualisierung alle zwei Sekunden. Außerhalb des Fahrzeugs bleiben die Werte auf <code>n/d</code> (nicht verfügbar).
+  Die Fallbacks-Kette im Code: <code>window?.tesla?.X ?? window?.TeslaApp?.x ?? window?.x ?? null</code>.
+  Geschwindigkeit kommt zusätzlich über <code>navigator.geolocation.watchPosition()</code>.
+</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var PROPS_TESLA = [
+    'VehicleSpeed', 'ShiftState', 'BatteryLevel', 'EstBatteryRange',
+    'InsideTemp', 'OutsideTemp', 'Latitude', 'Longitude', 'Power'
+  ];
+  var PROPS_TESLAAPP = [
+    'vehicleSpeed', 'shiftState', 'batteryLevel', 'estBatteryRange',
+    'insideTemp', 'outsideTemp', 'latitude', 'longitude', 'power'
+  ];
+  var PROPS_FLAT = [
+    'vehicleSpeed', 'shiftState', 'batteryLevel', 'estBatteryRange',
+    'insideTemp', 'outsideTemp', 'latitude', 'longitude', 'power'
+  ];
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&')
+      .replace(/</g, '<')
+      .replace(/>/g, '>')
+      .replace(/"/g, '"');
+  }
+
+  function fmt(v) {
+    if (v === undefined) return { html: 'undefined', cls: 'null' };
+    if (v === null) return { html: 'null', cls: 'null' };
+    if (typeof v === 'number') {
+      return { html: esc(Number.isInteger(v) ? String(v) : v.toFixed(2)), cls: 'num' };
+    }
+    if (typeof v === 'boolean') {
+      return { html: String(v), cls: v ? 'bool-true' : 'bool-false' };
+    }
+    if (typeof v === 'string') return { html: esc(v), cls: 'str' };
+    try {
+      return { html: esc(JSON.stringify(v)), cls: 'str' };
+    } catch (e) {
+      return { html: esc(String(v)), cls: 'err' };
+    }
+  }
+
+  function row(name, v) {
+    var f = fmt(v);
+    return '<tr><td class="prop">' + esc(name) + '</td><td class="val ' + f.cls + '">' + f.html + '</td><td>' + esc(typeof v) + '</td></tr>';
+  }
+
+  function readNs(obj, props) {
+    var out = {};
+    if (!obj) {
+      props.forEach(function (p) { out[p] = undefined; });
+      return out;
+    }
+    props.forEach(function (p) {
+      try { out[p] = obj[p]; } catch (e) { out[p] = 'ERR: ' + e.message; }
+    });
+    return out;
+  }
+
+  function fillTable(id, data) {
+    var tb = document.getElementById(id);
+    var keys = Object.keys(data);
+    tb.innerHTML = keys.map(function (k) { return row(k, data[k]); }).join('');
+  }
+
+  var geoState = { lat: null, lon: null, speed: null, heading: null, acc: null, ts: null };
+
+  function fillGeo() {
+    var tb = document.getElementById('tbl-geo');
+    tb.innerHTML = [
+      row('latitude', geoState.lat),
+      row('longitude', geoState.lon),
+      row('speed (m/s)', geoState.speed),
+      row('heading (°)', geoState.heading),
+      row('accuracy (m)', geoState.acc),
+      row('timestamp', geoState.ts)
+    ].join('');
+  }
+
+  function fillMedia(devices) {
+    var tb = document.getElementById('tbl-media);
+    if (!devices || !devices.length) {
+      tb.innerHTML = '<tr><td colspan="3" class="val null">keine Geräte gefunden</td></tr>';
+      return;
+    }
+    tb.innerHTML = devices.map(function (d) {
+      return '<tr><td class="prop">' + esc(d.deviceId) + '</td><td>' + esc(d.kind) + '</td><td>' + esc(d.label || '') + '</td></tr>';
+    }).join('');
+  }
+
+  function probe() {
+    var tesla = readNs(window.tesla, PROPS_TESLA);
+    var teslaApp = readNs(window.TeslaApp, PROPS_TESLAAPP);
+    var flat = readNs(window, PROPS_FLAT);
+
+    fillTable('tbl-tesla', tesla);
+    fillTable('tbl-teslaapp', teslaApp);
+    fillTable('tbl-flat', flat);
+    fillGeo();
+
+    var any = PROPS_TESLA.some(function (p) { return tesla[p] !== undefined; }) ||
+              PROPS_TESLAAPP.some(function (p) { return teslaApp[p] !== undefined; }) ||
+              PROPS_FLAT.some(function (p) { return flat[p] !== undefined; });
+    var badge = document.getElementById('overall');
+    if (any) {
+      badge.className = 'status ok';
+      badge.textContent = 'Tesla-Daten verfügbar';
+    } else if (window.tesla || window.TeslaApp) {
+      badge.className = 'status partial';
+      badge.textContent = 'Namespace vorhanden, aber keine Werte';
+    } else {
+      badge.className = 'status none';
+      badge.textContent = 'Keine Tesla-Namespaces gefunden (Seite läuft außerhalb des Autos?)';
+    }
+  }
+
+  // Geolocation speed probe
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      function (pos) {
+        geoState.lat = pos.coords.latitude;
+        geoState.lon = pos.coords.longitude;
+        geoState.speed = pos.coords.speed;
+        geoState.heading = pos.coords.heading;
+        geoState.acc = pos.coords.accuracy;
+        geoState.ts = new Date(pos.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        fillGeo();
+      },
+      function (err) {
+        document.getElementById('tbl-geo').innerHTML = '<tr><td colspan="3" class="val err">Geolocation Fehler: ' + esc(err.message) + '</td></tr>';
+      },
+      { enableHighAccuracy: true, maximumAge: 1000 }
+    );
+  } else {
+    document.getElementById('tbl-geo').innerHTML = '<tr><td colspan="3" class="val null">Geolocation nicht unterstützt</td></tr>';
+  }
+
+  // Media devices probe (cabin camera / mic)
+  if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+    navigator.mediaDevices.enumerateDevices()
+      .then(fillMedia)
+      .catch(function (err) {
+        document.getElementById('tbl-media').innerHTML = '<tr><td colspan="3" class="val err">' + esc(err.message) + '</td></tr>';
+      });
+  } else {
+    document.getElementById('tbl-media').innerHTML = '<tr><td colspan="3" class="val null">mediaDevices nicht unterstützt</td></tr>';
+  }
+
+  probe();
+  setInterval(probe, 2000);
+})();
+</script>
+</body>
+</html>
