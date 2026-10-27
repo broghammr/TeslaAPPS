@@ -178,7 +178,7 @@
 
     .stage {
       display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.8fr);
+      grid-template-columns: minmax(0, 1fr) auto minmax(180px, 0.46fr);
       gap: 0.9rem;
       min-height: 0;
       min-width: 0;
@@ -283,15 +283,20 @@
     .gauge-value.hot { stroke: var(--retro-gold); filter: drop-shadow(0 0 6px rgba(240, 165, 0, 0.85)); }
     .gauge-value.max { stroke: var(--retro-coral); filter: drop-shadow(0 0 6px rgba(255, 107, 87, 0.85)); }
 
-    .side {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      gap: 0.9rem;
-      min-height: 0;
-      min-width: 0;
+    .gear-panel {
+      width: clamp(4.4rem, 6.5vw, 5.8rem);
+      padding: 0.7rem 0.5rem 0.6rem;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.55rem;
     }
 
-    .gear-panel,
+    .gear-panel .kicker {
+      text-align: center;
+      letter-spacing: 0.1em;
+    }
+
     .power-panel {
       padding: 0.85rem 1rem 1rem;
       display: flex;
@@ -302,23 +307,28 @@
 
     .gears {
       display: flex;
-      gap: 0.55rem;
+      flex-direction: column;
+      flex: 1;
+      gap: 0.45rem;
+      min-height: 0;
       width: 100%;
-      min-width: 0;
     }
 
     .gear {
       font-family: "Orbitron", sans-serif;
       font-weight: 700;
-      font-size: clamp(1.15rem, 5vw, 2.3rem);
+      font-size: clamp(1.25rem, 3.2vh, 2rem);
       text-align: center;
-      padding: 0.45rem 0.15rem 0.35rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.2rem 0;
       border-radius: 14px;
       border: 2px solid var(--retro-chrome-dark);
       color: var(--retro-chrome-dark);
       background: transparent;
       flex: 1 1 0;
-      min-width: 0;
+      min-height: 0;
     }
 
     .gear.on-p { color: var(--retro-navy); background: var(--retro-gold); border-color: var(--retro-gold); box-shadow: 0 0 16px rgba(240, 165, 0, 0.45); }
@@ -481,7 +491,8 @@
         min-height: 100vh;
         grid-template-rows: auto auto auto;
       }
-      .stage { grid-template-columns: 1fr; }
+      .stage { grid-template-columns: minmax(0, 1fr) auto; }
+      .power-panel { grid-column: 1 / -1; }
       .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       header { grid-template-columns: 1fr auto; }
       .tagline { display: none; }
@@ -550,26 +561,24 @@
         </div>
       </section>
 
-      <div class="side">
-        <section class="panel gear-panel" aria-labelledby="gear-label">
-          <p class="kicker" id="gear-label">Gang</p>
-          <div class="gears" id="gears">
-            <div class="gear" id="gear-p">P</div>
-            <div class="gear" id="gear-r">R</div>
-            <div class="gear" id="gear-n">N</div>
-            <div class="gear" id="gear-d">D</div>
-          </div>
-        </section>
-        <section class="panel power-panel" aria-labelledby="power-label">
-          <p class="kicker" id="power-label">Leistung</p>
-          <p class="power-num" id="power">n/d</p>
-          <div class="power-scale" aria-hidden="true">
-            <span class="power-zero"></span>
-            <span class="power-fill" id="power-fill"></span>
-          </div>
-          <p class="unit">Kilowatt</p>
-        </section>
-      </div>
+      <section class="panel gear-panel" aria-labelledby="gear-label">
+        <p class="kicker" id="gear-label">Gang</p>
+        <div class="gears" id="gears">
+          <div class="gear" id="gear-p">P</div>
+          <div class="gear" id="gear-r">R</div>
+          <div class="gear" id="gear-n">N</div>
+          <div class="gear" id="gear-d">D</div>
+        </div>
+      </section>
+      <section class="panel power-panel" aria-labelledby="power-label">
+        <p class="kicker" id="power-label">Leistung</p>
+        <p class="power-num" id="power">n/d</p>
+        <div class="power-scale" aria-hidden="true">
+          <span class="power-zero"></span>
+          <span class="power-fill" id="power-fill"></span>
+        </div>
+        <p class="unit">Kilowatt</p>
+      </section>
     </div>
 
     <section class="cards">
