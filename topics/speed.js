@@ -16,10 +16,13 @@ const WEATHER_CONDITION = document.getElementById("weather-condition");
 const WEATHER_LOCATION = document.getElementById("weather-location");
 const WEATHER_BACKDROP = document.getElementById("weather-backdrop");
 const WEATHER_TILE_BACKDROP = document.getElementById("weather-tile-backdrop");
+const SPEED_MAP_MARKER = document.getElementById("speed-map-marker");
+const SPEED_MAP_MARKER_HALO = document.getElementById("speed-map-marker-halo");
 const WEATHER_REFRESH_INTERVAL = 10 * 60 * 1000;
 let lastWeatherRequest;
 
 const HEADINGS = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
+const GERMANY_MAP = { west: 5.8, east: 15.1, north: 55.1, south: 47.2, width: 591.504, height: 800.504 };
 const WEATHER_CODES = {
   0: "Klar",
   1: "Überwiegend klar",
@@ -80,6 +83,7 @@ function formatAltitude(meters) {
 }
 
 function updatePosition(position) {
+  updateMapPosition(position.coords.latitude, position.coords.longitude);
   if (SPEED_NUMBER) {
     SPEED_NUMBER.textContent = formatSpeedKmh(position.coords.speed);
   }
@@ -93,6 +97,27 @@ function updatePosition(position) {
     COMPASS_ARROW.style.transform = `rotate(${position.coords.heading}deg)`;
   }
   loadWeather(position.coords.latitude, position.coords.longitude);
+}
+
+function updateMapPosition(latitude, longitude) {
+  if (!SPEED_MAP_MARKER || !SPEED_MAP_MARKER_HALO) return;
+  const x =
+    ((longitude - GERMANY_MAP.west) / (GERMANY_MAP.east - GERMANY_MAP.west)) * GERMANY_MAP.width;
+  const y =
+    ((GERMANY_MAP.north - latitude) / (GERMANY_MAP.north - GERMANY_MAP.south)) * GERMANY_MAP.height;
+  const visible =
+    longitude >= GERMANY_MAP.west &&
+    longitude <= GERMANY_MAP.east &&
+    latitude >= GERMANY_MAP.south &&
+    latitude <= GERMANY_MAP.north;
+
+  SPEED_MAP_MARKER.setAttribute("cx", String(x));
+  SPEED_MAP_MARKER.setAttribute("cy", String(y));
+  SPEED_MAP_MARKER_HALO.setAttribute("cx", String(x));
+  SPEED_MAP_MARKER_HALO.setAttribute("cy", String(y));
+  const visibility = visible ? "visible" : "hidden";
+  SPEED_MAP_MARKER.setAttribute("visibility", visibility);
+  SPEED_MAP_MARKER_HALO.setAttribute("visibility", visibility);
 }
 
 function handleError(error) {
@@ -112,6 +137,8 @@ function handleError(error) {
   if (HEADING_LABEL) HEADING_LABEL.textContent = "–";
   if (ALTITUDE_LABEL) ALTITUDE_LABEL.textContent = "–";
   if (WEATHER_CONDITION) WEATHER_CONDITION.textContent = message;
+  if (SPEED_MAP_MARKER) SPEED_MAP_MARKER.setAttribute("visibility", "hidden");
+  if (SPEED_MAP_MARKER_HALO) SPEED_MAP_MARKER_HALO.setAttribute("visibility", "hidden");
 }
 
 async function loadWeather(latitude, longitude) {

@@ -105,6 +105,36 @@
         width: 100%;
       }
 
+      .speed-map {
+        min-height: 340px;
+        padding: 1rem;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .speed-map__svg {
+        width: min(100%, 216px);
+        height: auto;
+        overflow: visible;
+      }
+
+      .speed-map__marker-halo {
+        fill: var(--bg-tile);
+        stroke: #0070f3;
+        stroke-width: 4;
+      }
+
+      .speed-map__marker {
+        fill: #0070f3;
+      }
+
+      @media (min-width: 1200px) {
+        .speed-hub .tile-grid {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+
       .tile--speed {
         min-height: 220px;
         padding: 0;
@@ -291,6 +321,14 @@
             <span class="weather-tile__temperature" id="weather-temperature" aria-live="polite">–</span>
             <span class="weather-tile__condition" id="weather-condition">Standort wird ermittelt…</span>
             <span class="weather-tile__location" id="weather-location"></span>
+          </section>
+          <section class="tile speed-map" role="listitem" aria-label="Aktuelle GPS-Position auf der Deutschlandkarte">
+            <svg class="speed-map__svg" viewBox="0 0 591.504 800.504" role="img" aria-labelledby="speed-map-title">
+              <title id="speed-map-title">Deutschlandkarte mit aktueller GPS-Position</title>
+              <image href="../assets/germany.svg" x="0" y="0" width="591.504" height="800.504" />
+              <circle class="speed-map__marker-halo" id="speed-map-marker-halo" cx="0" cy="0" r="13" visibility="hidden" />
+              <circle class="speed-map__marker" id="speed-map-marker" cx="0" cy="0" r="7" visibility="hidden" />
+            </svg>
           </section>
         </div>
       </main>
