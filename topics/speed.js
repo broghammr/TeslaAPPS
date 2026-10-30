@@ -19,8 +19,21 @@ const WEATHER_TILE_BACKDROP = document.getElementById("weather-tile-backdrop");
 const SPEED_MAP_MARKER = document.getElementById("speed-map-marker");
 const SPEED_MAP_MARKER_HALO = document.getElementById("speed-map-marker-halo");
 const INTRO_SOUND = document.getElementById("speed-intro-sound");
+const SPEED_TILES = document.querySelector(".speed-hub .tile-grid");
+const SOUND_EFFECTS = [
+  "../assets/sound_effect_man+screaming.mp3",
+  "../assets/sound_effect_kamehameha.mp3",
+  "../assets/sound_effect_high+heels.mp3",
+  "../assets/sound_effect_futuristic+robot.mp3",
+  "../assets/sound_effect_clown+laugh.mp3",
+  "../assets/sound_effect_bomb+explosion.mp3",
+];
+const SOUND_EFFECT_INTERVAL = 69 * 1000;
 const WEATHER_REFRESH_INTERVAL = 10 * 60 * 1000;
 let lastWeatherRequest;
+let soundEffectTimer;
+let soundCycleStopped = false;
+let introFinished = false;
 
 const HEADINGS = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
 const GERMANY_MAP = { west: 5.8, east: 15.1, north: 55.1, south: 47.2, width: 591.504, height: 800.504 };
@@ -229,29 +242,70 @@ function setupDarkMode() {
   }
 }
 
+function playRandomSoundEffect() {
+  if (!INTRO_SOUND) return;
+
+  const sound = SOUND_EFFECTS[Math.floor(Math.random() * SOUND_EFFECTS.length)];
+  INTRO_SOUND.src = sound;
+  INTRO_SOUND.load();
+  INTRO_SOUND.play().catch((error) => {
+    console.warn("Soundeffekt konnte nicht abgespielt werden:", error);
+  });
+}
+
+function stopSoundEffectCycle() {
+  soundCycleStopped = true;
+  window.clearInterval(soundEffectTimer);
+  soundEffectTimer = undefined;
+  if (INTRO_SOUND && introFinished) {
+    INTRO_SOUND.pause();
+    INTRO_SOUND.currentTime = 0;
+  }
+}
+
+function startSoundEffectCycle() {
+  if (soundCycleStopped) return;
+  playRandomSoundEffect();
+  soundEffectTimer = window.setInterval(playRandomSoundEffect, SOUND_EFFECT_INTERVAL);
+}
+
 function playIntroSound() {
   if (!INTRO_SOUND) return;
 
+  const startCycleAfterIntro = () => {
+    introFinished = true;
+    INTRO_SOUND.removeEventListener("ended", startCycleAfterIntro);
+    startSoundEffectCycle();
+  };
+  INTRO_SOUND.addEventListener("ended", startCycleAfterIntro, { once: true });
+
   INTRO_SOUND.play().catch((error) => {
     if (error.name !== "NotAllowedError") {
-      console.warn("Soundeffekt konnte nicht abgespielt werden:", error);
+      console.warn("Intro-Soundeffekt konnte nicht abgespielt werden:", error);
       return;
     }
 
     const playAfterInteraction = () => {
       document.removeEventListener("keydown", playAfterInteraction);
       document.removeEventListener("pointerdown", playAfterInteraction);
+      document.removeEventListener("touchstart", playAfterInteraction);
       INTRO_SOUND.play().catch((playError) => {
-        console.warn("Soundeffekt konnte nicht abgespielt werden:", playError);
+        console.warn("Intro-Soundeffekt konnte nicht abgespielt werden:", playError);
       });
     };
 
     document.addEventListener("keydown", playAfterInteraction, { once: true });
     document.addEventListener("pointerdown", playAfterInteraction, { once: true });
+    document.addEventListener("touchstart", playAfterInteraction, { once: true, passive: true });
   });
 }
 
-window.addEventListener("load", playIntroSound, { once: true });
+if (SPEED_TILES) {
+  SPEED_TILES.addEventListener("pointerdown", stopSoundEffectCycle);
+  SPEED_TILES.addEventListener("click", stopSoundEffectCycle);
+}
+
+document.addEventListener("DOMContentLoaded", playIntroSound, { once: true });
 
 document.addEventListener("DOMContentLoaded", () => {
   setupDarkMode();
