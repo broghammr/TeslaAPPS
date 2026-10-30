@@ -282,11 +282,61 @@
         letter-spacing: 0.08em;
         color: var(--text-muted);
       }
+
+      .speed-clown-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        pointer-events: none;
+        overflow: hidden;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+
+      .speed-clown-overlay.is-visible {
+        opacity: 1;
+      }
+
+      .speed-clown-overlay img {
+        position: absolute;
+        width: min(42vw, 320px);
+        height: auto;
+        filter: drop-shadow(0 0 18px rgba(0, 0, 0, 0.55));
+        animation: speed-clown-pop 2s ease-in-out forwards;
+      }
+
+      @keyframes speed-clown-pop {
+        0% {
+          transform: scale(0.4) rotate(-12deg);
+          opacity: 0;
+        }
+        12% {
+          transform: scale(1.15) rotate(6deg);
+          opacity: 1;
+        }
+        22% {
+          transform: scale(1) rotate(-3deg);
+        }
+        78% {
+          transform: scale(1) rotate(3deg);
+        }
+        88% {
+          transform: scale(1.1) rotate(-6deg);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.3) rotate(10deg);
+          opacity: 0;
+        }
+      }
     </style>
   </head>
   <body class="speed-page">
     <div class="speed-weather-backdrop" aria-hidden="true">
       <svg id="weather-backdrop" viewBox="0 0 400 300"></svg>
+    </div>
+    <div class="speed-clown-overlay" id="speed-clown-overlay" aria-hidden="true">
+      <img src="../assets/chibi.jpg" alt="" />
     </div>
     <div class="app speed-app">
       <h1 class="page-title speed-page-title">
