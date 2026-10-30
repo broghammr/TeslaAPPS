@@ -18,6 +18,7 @@ const WEATHER_BACKDROP = document.getElementById("weather-backdrop");
 const WEATHER_TILE_BACKDROP = document.getElementById("weather-tile-backdrop");
 const SPEED_MAP_MARKER = document.getElementById("speed-map-marker");
 const SPEED_MAP_MARKER_HALO = document.getElementById("speed-map-marker-halo");
+const INTRO_SOUND = document.getElementById("speed-intro-sound");
 const WEATHER_REFRESH_INTERVAL = 10 * 60 * 1000;
 let lastWeatherRequest;
 
@@ -227,6 +228,30 @@ function setupDarkMode() {
     query.addListener((e) => apply(e.matches));
   }
 }
+
+function playIntroSound() {
+  if (!INTRO_SOUND) return;
+
+  INTRO_SOUND.play().catch((error) => {
+    if (error.name !== "NotAllowedError") {
+      console.warn("Soundeffekt konnte nicht abgespielt werden:", error);
+      return;
+    }
+
+    const playAfterInteraction = () => {
+      document.removeEventListener("keydown", playAfterInteraction);
+      document.removeEventListener("pointerdown", playAfterInteraction);
+      INTRO_SOUND.play().catch((playError) => {
+        console.warn("Soundeffekt konnte nicht abgespielt werden:", playError);
+      });
+    };
+
+    document.addEventListener("keydown", playAfterInteraction, { once: true });
+    document.addEventListener("pointerdown", playAfterInteraction, { once: true });
+  });
+}
+
+window.addEventListener("load", playIntroSound, { once: true });
 
 document.addEventListener("DOMContentLoaded", () => {
   setupDarkMode();
