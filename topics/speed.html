@@ -111,12 +111,19 @@
         align-items: center;
         justify-content: center;
         overflow: hidden;
+        isolation: isolate;
       }
 
       .speed-map__svg {
-        width: min(100%, 216px);
-        height: auto;
-        overflow: visible;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+      }
+
+      .speed-map__image {
+        opacity: 0.3;
       }
 
       .speed-map__marker-halo {
@@ -127,6 +134,11 @@
 
       .speed-map__marker {
         fill: #0070f3;
+      }
+
+      .speed-map .speed-compass {
+        position: relative;
+        z-index: 1;
       }
 
       @media (min-width: 1200px) {
@@ -150,30 +162,6 @@
       .tile--speed:hover,
       .tile--speed:focus-visible,
       .tile--speed:active {
-        background: var(--bg-tile);
-        border-color: var(--accent);
-        box-shadow: var(--shadow-hover);
-        transform: none;
-      }
-
-      .tile--heading {
-        min-height: 220px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        cursor: default;
-        background: var(--bg-tile);
-        border: 2px solid var(--border);
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        position: relative;
-      }
-
-      .tile--heading:hover,
-      .tile--heading:focus-visible,
-      .tile--heading:active {
         background: var(--bg-tile);
         border-color: var(--accent);
         box-shadow: var(--shadow-hover);
@@ -356,7 +344,13 @@
               <span id="speed-number">–</span><span class="speed-value__unit">km/h</span>
             </p>
           </div>
-          <div class="tile tile--heading" role="listitem">
+          <section class="tile speed-map" role="listitem" aria-label="Aktuelle GPS-Position auf der Deutschlandkarte">
+            <svg class="speed-map__svg" viewBox="0 0 591.504 800.504" role="img" aria-labelledby="speed-map-title">
+              <title id="speed-map-title">Deutschlandkarte mit aktueller GPS-Position</title>
+              <image class="speed-map__image" href="../assets/germany.svg" x="0" y="0" width="591.504" height="800.504" />
+              <circle class="speed-map__marker-halo" id="speed-map-marker-halo" cx="0" cy="0" r="13" visibility="hidden" />
+              <circle class="speed-map__marker" id="speed-map-marker" cx="0" cy="0" r="7" visibility="hidden" />
+            </svg>
             <div class="speed-compass" aria-hidden="true">
               <svg class="speed-compass__arrow" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2 L19 21 L12 17 L5 21 Z"></path>
@@ -364,21 +358,13 @@
               <span class="speed-compass__label" id="heading-label">–</span>
               <span class="speed-compass__altitude" id="altitude-label">–</span>
             </div>
-          </div>
+          </section>
           <section class="tile tile--weather" role="listitem" aria-label="Aktuelles Wetter">
             <svg class="weather-tile__backdrop" id="weather-tile-backdrop" viewBox="0 0 400 300" aria-hidden="true"></svg>
             <h2 class="weather-tile__title">Wetter am Standort</h2>
             <span class="weather-tile__temperature" id="weather-temperature" aria-live="polite">–</span>
             <span class="weather-tile__condition" id="weather-condition">Standort wird ermittelt…</span>
             <span class="weather-tile__location" id="weather-location"></span>
-          </section>
-          <section class="tile speed-map" role="listitem" aria-label="Aktuelle GPS-Position auf der Deutschlandkarte">
-            <svg class="speed-map__svg" viewBox="0 0 591.504 800.504" role="img" aria-labelledby="speed-map-title">
-              <title id="speed-map-title">Deutschlandkarte mit aktueller GPS-Position</title>
-              <image href="../assets/germany.svg" x="0" y="0" width="591.504" height="800.504" />
-              <circle class="speed-map__marker-halo" id="speed-map-marker-halo" cx="0" cy="0" r="13" visibility="hidden" />
-              <circle class="speed-map__marker" id="speed-map-marker" cx="0" cy="0" r="7" visibility="hidden" />
-            </svg>
           </section>
         </div>
       </main>
