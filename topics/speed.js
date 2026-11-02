@@ -18,6 +18,8 @@ const WEATHER_BACKDROP = document.getElementById("weather-backdrop");
 const WEATHER_TILE_BACKDROP = document.getElementById("weather-tile-backdrop");
 const SPEED_MAP_MARKER = document.getElementById("speed-map-marker");
 const SPEED_MAP_MARKER_HALO = document.getElementById("speed-map-marker-halo");
+const ACCELERATION_VALUE = document.getElementById("acceleration-value");
+const ACCELERATION_TRACK = document.getElementById("acceleration-track");
 const INTRO_SOUND = document.getElementById("speed-intro-sound");
 const SPEED_TILES = document.querySelector(".speed-hub .tile-grid");
 const SOUND_EFFECTS = [
@@ -30,10 +32,14 @@ const SOUND_EFFECTS = [
 ];
 const SOUND_EFFECT_INTERVAL = 69 * 1000;
 const WEATHER_REFRESH_INTERVAL = 10 * 60 * 1000;
+const ACCELERATION_MIN = -30;
+const ACCELERATION_MAX = 100;
 let lastWeatherRequest;
 let soundEffectTimer;
 let soundCycleStopped = false;
 let introFinished = false;
+let previousSpeedSample;
+let filteredAcceleration;
 
 const HEADINGS = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
 const GERMANY_MAP = { west: 5.8, east: 15.1, north: 55.1, south: 47.2, width: 591.504, height: 800.504 };
@@ -98,6 +104,7 @@ function formatAltitude(meters) {
 
 function updatePosition(position) {
   updateMapPosition(position.coords.latitude, position.coords.longitude);
+  updateAcceleration(position.coords.speed, position.timestamp);
   if (SPEED_NUMBER) {
     SPEED_NUMBER.textContent = formatSpeedKmh(position.coords.speed);
   }
@@ -111,6 +118,72 @@ function updatePosition(position) {
     COMPASS_ARROW.style.transform = `rotate(${position.coords.heading}deg)`;
   }
   loadWeather(position.coords.latitude, position.coords.longitude);
+}
+
+function updateAcceleration(speedMps, timestamp) {
+  if (!Number.isFinite(speedMps)) {
+    previousSpeedSample = undefined;
+    filteredAcceleration = undefined;
+    if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
+    if (ACCELERATION_TRACK) {
+      ACCELERATION_TRACK.setAttribute("aria-valuenow", "0");
+      ACCELERATION_TRACK.setAttribute("aria-valuetext", "GPS-Geschwindigkeit nicht verfügbar");
+      ACCELERATION_TRACK.style.setProperty("--acceleration-start", "23.08%");
+      ACCELERATION_TRACK.style.setProperty("--acceleration-size", "0%");
+    }
+    return;
+  }
+
+  const sample = { speedMps, timestamp };
+  if (!previousSpeedSample) {
+    previousSpeedSample = sample;
+    if (ACCELERATION_TRACK) {
+      ACCELERATION_TRACK.setAttribute("aria-valuetext", "Beschleunigung wird ermittelt");
+    }
+    return;
+  }
+
+  const elapsedSeconds = (timestamp - previousSpeedSample.timestamp) / 1000;
+  if (elapsedSeconds <= 0 || elapsedSeconds > 10) {
+    previousSpeedSample = sample;
+    filteredAcceleration = undefined;
+    if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
+    if (ACCELERATION_TRACK) {
+      ACCELERATION_TRACK.setAttribute("aria-valuetext", "Beschleunigung wird ermittelt");
+      ACCELERATION_TRACK.style.setProperty("--acceleration-start", "23.08%");
+      ACCELERATION_TRACK.style.setProperty("--acceleration-size", "0%");
+    }
+    return;
+  }
+
+  const measuredAcceleration =
+    ((speedMps - previousSpeedSample.speedMps) * 3.6) / elapsedSeconds;
+  previousSpeedSample = sample;
+  filteredAcceleration =
+    filteredAcceleration === undefined
+      ? measuredAcceleration
+      : filteredAcceleration * 0.65 + measuredAcceleration * 0.35;
+
+  const acceleration = Math.max(
+    ACCELERATION_MIN,
+    Math.min(ACCELERATION_MAX, filteredAcceleration),
+  );
+  const zeroPosition =
+    ((0 - ACCELERATION_MIN) / (ACCELERATION_MAX - ACCELERATION_MIN)) * 100;
+  const accelerationPosition =
+    ((acceleration - ACCELERATION_MIN) / (ACCELERATION_MAX - ACCELERATION_MIN)) * 100;
+  const start = Math.min(zeroPosition, accelerationPosition);
+  const size = Math.abs(accelerationPosition - zeroPosition);
+  if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = String(Math.round(acceleration));
+  if (ACCELERATION_TRACK) {
+    ACCELERATION_TRACK.style.setProperty("--acceleration-start", `${start}%`);
+    ACCELERATION_TRACK.style.setProperty("--acceleration-size", `${size}%`);
+    ACCELERATION_TRACK.setAttribute("aria-valuenow", acceleration.toFixed(1));
+    ACCELERATION_TRACK.setAttribute(
+      "aria-valuetext",
+      `${acceleration.toFixed(1)} km/h pro Sekunde`,
+    );
+  }
 }
 
 function updateMapPosition(latitude, longitude) {
@@ -153,6 +226,15 @@ function handleError(error) {
   if (WEATHER_CONDITION) WEATHER_CONDITION.textContent = message;
   if (SPEED_MAP_MARKER) SPEED_MAP_MARKER.setAttribute("visibility", "hidden");
   if (SPEED_MAP_MARKER_HALO) SPEED_MAP_MARKER_HALO.setAttribute("visibility", "hidden");
+  previousSpeedSample = undefined;
+  filteredAcceleration = undefined;
+  if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
+  if (ACCELERATION_TRACK) {
+    ACCELERATION_TRACK.setAttribute("aria-valuenow", "0");
+    ACCELERATION_TRACK.setAttribute("aria-valuetext", message);
+    ACCELERATION_TRACK.style.setProperty("--acceleration-start", "23.08%");
+    ACCELERATION_TRACK.style.setProperty("--acceleration-size", "0%");
+  }
 }
 
 async function loadWeather(latitude, longitude) {
