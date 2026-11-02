@@ -8,6 +8,7 @@ Statischer Themen-Hub für den Tesla-Browser: [broghammr.github.io/TeslaAPPS](ht
 - **Light:** Steuerung von Beleuchtung, Lüfter und Lichtszenen sowie Startanimation.
 - **Monitor:** Raspberry-Pi-Temperatur, beim Laden und bei Auswahl der Kachel aktualisiert.
 - **Chibi:** Bildkachel im Hub, die zur Galerie unter `topics/labor.html` führt; auf der Light-Seite löst sie die Startanimation aus.
+- **Speed:** GPS-Geschwindigkeit, Deutschlandkarte mit Position, Wetter und Beschleunigungsanzeige; Seitenversion **1.0.0**.
 - **Kryptoportfolio:** Darstellung der fest im Frontend eingetragenen Bestände mit den letzten zwölf abgeschlossenen Monatskursen der Binance-API.
 
 Die Weboberfläche liegt in HTML, CSS und JavaScript direkt im Repository; ein Build-Schritt ist nicht erforderlich. Die Raspberry-Pi-Bridge und Szenenlogik befinden sich in `raspi/`.
