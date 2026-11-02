@@ -120,23 +120,28 @@ function updatePosition(position) {
   loadWeather(position.coords.latitude, position.coords.longitude);
 }
 
+function resetAccelerationDisplay(message) {
+  if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
+  if (ACCELERATION_TRACK) {
+    ACCELERATION_TRACK.setAttribute("aria-valuenow", "0");
+    ACCELERATION_TRACK.setAttribute("aria-valuetext", message);
+    ACCELERATION_TRACK.style.setProperty("--acceleration-start", "23.08%");
+    ACCELERATION_TRACK.style.setProperty("--acceleration-size", "0%");
+  }
+}
+
 function updateAcceleration(speedMps, timestamp) {
-  if (!Number.isFinite(speedMps)) {
+  if (!Number.isFinite(speedMps) || speedMps < 0) {
     previousSpeedSample = undefined;
     filteredAcceleration = undefined;
-    if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
-    if (ACCELERATION_TRACK) {
-      ACCELERATION_TRACK.setAttribute("aria-valuenow", "0");
-      ACCELERATION_TRACK.setAttribute("aria-valuetext", "GPS-Geschwindigkeit nicht verfügbar");
-      ACCELERATION_TRACK.style.setProperty("--acceleration-start", "23.08%");
-      ACCELERATION_TRACK.style.setProperty("--acceleration-size", "0%");
-    }
+    resetAccelerationDisplay("GPS-Geschwindigkeit nicht verfügbar");
     return;
   }
 
   const sample = { speedMps, timestamp };
   if (!previousSpeedSample) {
     previousSpeedSample = sample;
+    if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
     if (ACCELERATION_TRACK) {
       ACCELERATION_TRACK.setAttribute("aria-valuetext", "Beschleunigung wird ermittelt");
     }
@@ -144,15 +149,10 @@ function updateAcceleration(speedMps, timestamp) {
   }
 
   const elapsedSeconds = (timestamp - previousSpeedSample.timestamp) / 1000;
-  if (elapsedSeconds <= 0 || elapsedSeconds > 10) {
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0 || elapsedSeconds > 10) {
     previousSpeedSample = sample;
     filteredAcceleration = undefined;
-    if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
-    if (ACCELERATION_TRACK) {
-      ACCELERATION_TRACK.setAttribute("aria-valuetext", "Beschleunigung wird ermittelt");
-      ACCELERATION_TRACK.style.setProperty("--acceleration-start", "23.08%");
-      ACCELERATION_TRACK.style.setProperty("--acceleration-size", "0%");
-    }
+    resetAccelerationDisplay("Beschleunigung wird ermittelt");
     return;
   }
 
@@ -228,13 +228,7 @@ function handleError(error) {
   if (SPEED_MAP_MARKER_HALO) SPEED_MAP_MARKER_HALO.setAttribute("visibility", "hidden");
   previousSpeedSample = undefined;
   filteredAcceleration = undefined;
-  if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
-  if (ACCELERATION_TRACK) {
-    ACCELERATION_TRACK.setAttribute("aria-valuenow", "0");
-    ACCELERATION_TRACK.setAttribute("aria-valuetext", message);
-    ACCELERATION_TRACK.style.setProperty("--acceleration-start", "23.08%");
-    ACCELERATION_TRACK.style.setProperty("--acceleration-size", "0%");
-  }
+  resetAccelerationDisplay(message);
 }
 
 async function loadWeather(latitude, longitude) {
