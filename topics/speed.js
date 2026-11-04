@@ -104,7 +104,7 @@ function formatAltitude(meters) {
 
 function updatePosition(position) {
   updateMapPosition(position.coords.latitude, position.coords.longitude);
-  updateAcceleration(position.coords.speed, position.timestamp);
+  updateAcceleration(position.coords.speed);
   if (SPEED_NUMBER) {
     SPEED_NUMBER.textContent = formatSpeedKmh(position.coords.speed);
   }
@@ -130,7 +130,7 @@ function resetAccelerationDisplay(message) {
   }
 }
 
-function updateAcceleration(speedMps, timestamp) {
+function updateAcceleration(speedMps) {
   if (!Number.isFinite(speedMps) || speedMps < 0) {
     previousSpeedSample = undefined;
     filteredAcceleration = undefined;
@@ -138,7 +138,7 @@ function updateAcceleration(speedMps, timestamp) {
     return;
   }
 
-  const sample = { speedMps, timestamp };
+  const sample = { speedMps, timestamp: performance.now() };
   if (!previousSpeedSample) {
     previousSpeedSample = sample;
     if (ACCELERATION_VALUE) ACCELERATION_VALUE.textContent = "–";
@@ -148,8 +148,8 @@ function updateAcceleration(speedMps, timestamp) {
     return;
   }
 
-  const elapsedSeconds = (timestamp - previousSpeedSample.timestamp) / 1000;
-  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0 || elapsedSeconds > 10) {
+  const elapsedSeconds = (sample.timestamp - previousSpeedSample.timestamp) / 1000;
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) {
     previousSpeedSample = sample;
     filteredAcceleration = undefined;
     resetAccelerationDisplay("Beschleunigung wird ermittelt");
