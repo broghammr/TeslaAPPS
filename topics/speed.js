@@ -32,12 +32,14 @@ const SOUND_EFFECTS = [
 ];
 const SOUND_EFFECT_INTERVAL = 69 * 1000;
 const WEATHER_REFRESH_INTERVAL = 10 * 60 * 1000;
+const ACCELERATION_SAMPLE_INTERVAL = 200;
 const ACCELERATION_MIN = -30;
 const ACCELERATION_MAX = 100;
 let lastWeatherRequest;
 let soundEffectTimer;
 let soundCycleStopped = false;
 let introFinished = false;
+let latestSpeedMps;
 let previousSpeedSample;
 let filteredAcceleration;
 
@@ -104,7 +106,7 @@ function formatAltitude(meters) {
 
 function updatePosition(position) {
   updateMapPosition(position.coords.latitude, position.coords.longitude);
-  updateAcceleration(position.coords.speed);
+  latestSpeedMps = position.coords.speed;
   if (SPEED_NUMBER) {
     SPEED_NUMBER.textContent = formatSpeedKmh(position.coords.speed);
   }
@@ -226,6 +228,7 @@ function handleError(error) {
   if (WEATHER_CONDITION) WEATHER_CONDITION.textContent = message;
   if (SPEED_MAP_MARKER) SPEED_MAP_MARKER.setAttribute("visibility", "hidden");
   if (SPEED_MAP_MARKER_HALO) SPEED_MAP_MARKER_HALO.setAttribute("visibility", "hidden");
+  latestSpeedMps = undefined;
   previousSpeedSample = undefined;
   filteredAcceleration = undefined;
   resetAccelerationDisplay(message);
@@ -385,6 +388,7 @@ document.addEventListener("DOMContentLoaded", playIntroSound, { once: true });
 
 document.addEventListener("DOMContentLoaded", () => {
   setupDarkMode();
+  window.setInterval(() => updateAcceleration(latestSpeedMps), ACCELERATION_SAMPLE_INTERVAL);
 
   if (!navigator.geolocation) {
     handleError({ code: 2 });
